@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Salon Agent — AI Voice Booking for Salons</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <span class="logo-icon">✦</span>
+        <span>The Salon Agent</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Live Demo</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#contact" class="nav-cta">Get Started</a></li>
+      </ul>
+      <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <canvas id="hero-canvas"></canvas>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        AI Voice Booking for Salons — Now Live
+      </div>
+      <h1 class="hero-headline">
+        Your Salon,<br />
+        <em>Never Misses</em><br />
+        a Call Again
+      </h1>
+      <p class="hero-sub">
+        A custom AI voice assistant that answers every call, books appointments,
+        handles reschedules, and speaks your brand — 24/7, flawlessly.
+      </p>
+      <div class="hero-actions">
+        <a href="#contact" class="btn-primary">Book a Free Demo</a>
+        <a href="#how-it-works" class="btn-ghost">See How It Works</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-num">100%</span>
+          <span class="stat-label">Calls Answered</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">24/7</span>
+          <span class="stat-label">Always On</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">&lt;0.4s</span>
+          <span class="stat-label">Response Time</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF TICKER -->
+  <section class="ticker-wrap">
+    <div class="ticker">
+      <div class="ticker-track">
+        <span>Lash Extensions ✦</span>
+        <span>Brow Lamination ✦</span>
+        <span>Keratin Treatments ✦</span>
+        <span>Nail Services ✦</span>
+        <span>Waxing ✦</span>
+        <span>Facials ✦</span>
+        <span>Hair Color ✦</span>
+        <span>Balayage ✦</span>
+        <span>Microblading ✦</span>
+        <span>Threading ✦</span>
+        <span>Lash Lift & Tint ✦</span>
+        <span>Volume Sets ✦</span>
+        <span>Hybrid Lashes ✦</span>
+        <!-- duplicate for seamless loop -->
+        <span>Lash Extensions ✦</span>
+        <span>Brow Lamination ✦</span>
+        <span>Keratin Treatments ✦</span>
+        <span>Nail Services ✦</span>
+        <span>Waxing ✦</span>
+        <span>Facials ✦</span>
+        <span>Hair Color ✦</span>
+        <span>Balayage ✦</span>
+        <span>Microblading ✦</span>
+        <span>Threading ✦</span>
+        <span>Lash Lift & Tint ✦</span>
+        <span>Volume Sets ✦</span>
+        <span>Hybrid Lashes ✦</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="section">
+    <div class="container">
+      <div class="section-label">The Process</div>
+      <h2 class="section-title">From Call to Confirmed<br />in Under 3 Minutes</h2>
+      <p class="section-sub">Our AI handles the entire booking flow — start to finish — the way a seasoned receptionist would, without the overhead.</p>
+
+      <div class="steps-grid">
+        <div class="step-card" data-step="01">
+          <div class="step-icon">📞</div>
+          <h3>Client Calls In</h3>
+          <p>Your AI receptionist picks up in under a second. No hold music. No voicemail. Just a warm, natural voice ready to help.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step-card" data-step="02">
+          <div class="step-icon">🔍</div>
+          <h3>Instantly Recognized</h3>
+          <p>Returning clients are looked up in real-time. The AI greets them by name, surfaces their upcoming appointments, and picks up right where they left off.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step-card" data-step="03">
+          <div class="step-icon">📅</div>
+          <h3>Live Availability Check</h3>
+          <p>Real-time calendar sync means no double-bookings, ever. The AI offers only actual open slots and handles staff preferences intelligently.</p>
+        </div>
+        <div class="step-connector">→</div>
+        <div class="step-card" data-step="04">
+          <div class="step-icon">✅</div>
+          <h3>Booked & Paid</h3>
+          <p>Appointment confirmed, SMS sent with deposit link — all in one call. Client hangs up happy. You get paid. No one had to lift a finger.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" class="section section-dark">
+    <div class="container">
+      <div class="section-label light">What's Included</div>
+      <h2 class="section-title light">Everything a Receptionist Does,<br />Automated</h2>
+
+      <div class="features-grid">
+        <div class="feature-card glass">
+          <div class="feature-icon">🎙️</div>
+          <h3>Human-Grade Voice</h3>
+          <p>Powered by ElevenLabs Flash — sub-400ms response time, ultra-low latency. Sounds like a real person because it's tuned to be one.</p>
+          <div class="feature-tag">ElevenLabs Flash v2.5</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">🔄</div>
+          <h3>Bookings, Reschedules & Cancellations</h3>
+          <p>Full appointment lifecycle — book new slots, move existing ones, cancel with policy enforcement, and flag edge cases for your team.</p>
+          <div class="feature-tag">Google Calendar Sync</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">💳</div>
+          <h3>Deposit Collection</h3>
+          <p>After every booking, the AI sends a secure payment link via SMS. Deposits collected automatically — no chasing clients down.</p>
+          <div class="feature-tag">Stripe Integration</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">📋</div>
+          <h3>Client Memory</h3>
+          <p>Returning clients are recognized instantly. The AI confirms their info, references their last artist, and picks up mid-conversation naturally.</p>
+          <div class="feature-tag">CRM Integration</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">🛡️</div>
+          <h3>Policy Enforcement</h3>
+          <p>24-hour cancellation policy? Non-refundable deposits? The AI knows and enforces your rules consistently — every call, every time.</p>
+          <div class="feature-tag">Custom Rules Engine</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">🚨</div>
+          <h3>Human Escalation</h3>
+          <p>When something needs a human — payment issues, emergencies, upset clients — the AI flags it immediately and alerts your team.</p>
+          <div class="feature-tag">Instant Staff Alerts</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">🎭</div>
+          <h3>Your Brand, Your Voice</h3>
+          <p>Custom persona, pronunciation rules, service-specific knowledge, your salon's name — everything is tailored to match your brand exactly.</p>
+          <div class="feature-tag">Full White-Label</div>
+        </div>
+
+        <div class="feature-card glass">
+          <div class="feature-icon">📊</div>
+          <h3>Analytics Dashboard</h3>
+          <p>Every call logged, transcribed, and tagged. See booking rates, peak hours, common questions — data to grow your business.</p>
+          <div class="feature-tag">Call Intelligence</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO SECTION -->
+  <section id="demo" class="section">
+    <div class="container">
+      <div class="section-label">Hear It Yourself</div>
+      <h2 class="section-title">This Is What Your<br />Clients Will Experience</h2>
+      <p class="section-sub">We built a live system for <em>Lashes by Shigeru</em> in Los Angeles. This is Mia — their AI receptionist. Real voice. Real bookings.</p>
+
+      <div class="demo-card">
+        <div class="demo-visual">
+          <div class="phone-mockup">
+            <div class="phone-screen">
+              <div class="call-ui">
+                <div class="call-avatar">MIA</div>
+                <div class="call-name">Lashes by Shigeru</div>
+                <div class="call-status">
+                  <span class="call-dot"></span>
+                  Live Call in Progress
+                </div>
+                <div class="call-waveform" id="waveform">
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                  <div class="wave-bar"></div>
+                </div>
+                <div class="call-transcript" id="transcript">
+                  <div class="transcript-line ai">
+                    <span class="speaker">Mia</span>
+                    <span class="text">"Hey! Thanks for calling Lashes by shigeeroo — this is Mia. What can I help you with today?"</span>
+                  </div>
+                  <div class="transcript-line client" id="client-line" style="opacity:0">
+                    <span class="speaker">Client</span>
+                    <span class="text">"I'd like to book a Hybrid Full Set..."</span>
+                  </div>
+                  <div class="transcript-line ai" id="ai-reply" style="opacity:0">
+                    <span class="speaker">Mia</span>
+                    <span class="text">"Yeah, Hybrid's great if you want something fuller without going full glam. What day works for you?"</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-text">
+          <h3>Mia — AI Receptionist</h3>
+          <p>Built for Lashes by Shigeru, Mia is:</p>
+          <ul class="demo-list">
+            <li>
+              <span class="check">✦</span>
+              Calm, self-assured, warm — not robotic or hyped
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Knows every service, price, and duration
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Checks live calendar availability in real-time
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Remembers returning clients by name
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Enforces 24-hour cancellation policy
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Collects deposit payments after booking
+            </li>
+            <li>
+              <span class="check">✦</span>
+              Escalates to human staff when needed
+            </li>
+          </ul>
+          <a href="#contact" class="btn-primary">Get Your Own Agent</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CUSTOMIZATION SECTION -->
+  <section id="customization" class="section section-dark">
+    <div class="container">
+      <div class="section-label light">Tailored to You</div>
+      <h2 class="section-title light">Every Salon Is Different.<br />So Is Every AI We Build.</h2>
+      <p class="section-sub light">We don't install off-the-shelf software. We build a custom AI receptionist that knows your salon like an employee who's been there for years.</p>
+
+      <div class="custom-grid">
+        <div class="custom-item">
+          <div class="custom-number">01</div>
+          <h3>Voice & Persona</h3>
+          <p>Choose from dozens of voices. We craft a persona that matches your brand — from upscale minimalist to bold and expressive.</p>
+        </div>
+        <div class="custom-item">
+          <div class="custom-number">02</div>
+          <h3>Your Full Service Menu</h3>
+          <p>Every service, price, duration, and description. The AI knows your menu cold and can explain the difference between a Hybrid and Volume set.</p>
+        </div>
+        <div class="custom-item">
+          <div class="custom-number">03</div>
+          <h3>Booking Rules & Policies</h3>
+          <p>Cancellation windows, deposit percentages, late fees, first-time client restrictions — every policy enforced exactly as you set it.</p>
+        </div>
+        <div class="custom-item">
+          <div class="custom-number">04</div>
+          <h3>Staff & Calendar Sync</h3>
+          <p>Individual staff calendars, booking preferences, working hours — the AI routes clients to the right artist based on your actual schedule.</p>
+        </div>
+        <div class="custom-item">
+          <div class="custom-number">05</div>
+          <h3>Pronunciation & Branding</h3>
+          <p>Has a unique name? Special product? We fine-tune pronunciation so your brand is always represented correctly, every time.</p>
+        </div>
+        <div class="custom-item">
+          <div class="custom-number">06</div>
+          <h3>CRM & Payment Stack</h3>
+          <p>We integrate with your existing tools — Square, Vagaro, Booksy, or custom — and connect payment processing for seamless deposit collection.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing" class="section">
+    <div class="container">
+      <div class="section-label">Simple Pricing</div>
+      <h2 class="section-title">Start Automating.<br />Grow When Ready.</h2>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="plan-badge">Starter</div>
+          <div class="plan-price">
+            <span class="price-amount">$299</span>
+            <span class="price-period">/mo</span>
+          </div>
+          <p class="plan-tagline">Perfect for solo artists & small studios</p>
+          <ul class="plan-features">
+            <li>Custom AI Voice Receptionist</li>
+            <li>Up to 200 calls/month</li>
+            <li>Booking + Cancellations</li>
+            <li>SMS Deposit Links</li>
+            <li>1 Staff Calendar</li>
+            <li>Email Support</li>
+          </ul>
+          <a href="#contact" class="btn-outline">Get Started</a>
+        </div>
+
+        <div class="pricing-card pricing-featured">
+          <div class="plan-badge featured-badge">Most Popular</div>
+          <div class="plan-price">
+            <span class="price-amount">$599</span>
+            <span class="price-period">/mo</span>
+          </div>
+          <p class="plan-tagline">For established salons ready to scale</p>
+          <ul class="plan-features">
+            <li>Everything in Starter</li>
+            <li>Unlimited calls</li>
+            <li>Up to 5 Staff Calendars</li>
+            <li>Reschedule & Policy Flows</li>
+            <li>Client CRM Memory</li>
+            <li>Human Escalation Alerts</li>
+            <li>Analytics Dashboard</li>
+            <li>Priority Support</li>
+          </ul>
+          <a href="#contact" class="btn-primary">Get Started</a>
+        </div>
+
+        <div class="pricing-card">
+          <div class="plan-badge">Enterprise</div>
+          <div class="plan-price">
+            <span class="price-amount">Custom</span>
+          </div>
+          <p class="plan-tagline">Multi-location chains & franchises</p>
+          <ul class="plan-features">
+            <li>Everything in Pro</li>
+            <li>Unlimited Locations</li>
+            <li>Multi-brand Support</li>
+            <li>Custom Integrations</li>
+            <li>Dedicated Engineer</li>
+            <li>White-glove Onboarding</li>
+            <li>SLA + Uptime Guarantee</li>
+          </ul>
+          <a href="#contact" class="btn-outline">Contact Us</a>
+        </div>
+      </div>
+
+      <p class="pricing-note">All plans include a custom AI build, onboarding, and 30-day satisfaction guarantee. Setup fee may apply.</p>
+    </div>
+  </section>
+
+  <!-- TESTIMONIAL -->
+  <section class="section section-accent">
+    <div class="container">
+      <div class="testimonial-card">
+        <div class="quote-mark">"</div>
+        <blockquote>
+          We used to miss calls constantly — clients would hang up and book somewhere else. Now Mia picks up every single time, sounds incredible, and books them before they even think about going elsewhere. It paid for itself in the first week.
+        </blockquote>
+        <div class="testimonial-author">
+          <div class="author-avatar">S</div>
+          <div>
+            <div class="author-name">Shigeru</div>
+            <div class="author-title">Owner, Lashes by Shigeru — Los Angeles, CA</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT / CTA -->
+  <section id="contact" class="section section-dark">
+    <div class="container">
+      <div class="contact-split">
+        <div class="contact-left">
+          <div class="section-label light">Let's Talk</div>
+          <h2 class="section-title light">Ready to Never Miss<br />a Booking Again?</h2>
+          <p class="section-sub light">We'll build a custom demo of your AI receptionist — with your salon name, your services, your voice — before you commit to anything.</p>
+
+          <div class="contact-perks">
+            <div class="perk">
+              <span class="perk-icon">✦</span>
+              Free custom demo build
+            </div>
+            <div class="perk">
+              <span class="perk-icon">✦</span>
+              Live call test before you pay
+            </div>
+            <div class="perk">
+              <span class="perk-icon">✦</span>
+              30-day money-back guarantee
+            </div>
+            <div class="perk">
+              <span class="perk-icon">✦</span>
+              Setup in as little as 5 days
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-right">
+          <form class="contact-form" id="contact-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Your Name</label>
+                <input type="text" placeholder="Jane Smith" required />
+              </div>
+              <div class="form-group">
+                <label>Salon Name</label>
+                <input type="text" placeholder="Lashes by Jane" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" placeholder="jane@yoursalon.com" required />
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="tel" placeholder="(555) 000-0000" />
+            </div>
+            <div class="form-group">
+              <label>What services do you offer?</label>
+              <textarea placeholder="Lash extensions, brow lamination, nails..." rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn-primary full-width">
+              Book My Free Demo
+            </button>
+            <p class="form-disclaimer">No spam. No pressure. Just a demo call to show you what's possible.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a href="#" class="nav-logo">
+            <span class="logo-icon">✦</span>
+            <span>The Salon Agent</span>
+          </a>
+          <p>AI voice agents built specifically for beauty salons. Bookings, reschedules, deposits — automated.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="#how-it-works">How It Works</a></li>
+              <li><a href="#features">Features</a></li>
+              <li><a href="#demo">Demo</a></li>
+              <li><a href="#pricing">Pricing</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+              <li><a href="#contact">Contact</a></li>
+              <li><a href="#">Privacy Policy</a></li>
+              <li><a href="#">Terms of Service</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 The Salon Agent. All rights reserved. Built with precision for the beauty industry. <a href="https://thesalonagent.com" style="color:var(--gold)">thesalonagent.com</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
