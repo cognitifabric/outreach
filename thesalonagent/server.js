@@ -175,26 +175,24 @@ app.post('/api/intake', async (req, res) => {
 
   const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 
-  try {
-    // Save to DB
-    await pool.query(
+  const data = { name, salon, email, phone, size, calls, bookingSystem, services, painPoints, decision, submittedAt, ip };
+
+  // Send admin email immediately — do NOT wait for DB
+  sendAdminEmail(data).catch(err => console.error('Email error:', err.message));
+
+  // Save to DB (best-effort — don't fail the response if DB is down)
+  if (process.env.DATABASE_URL) {
+    pool.query(
       `INSERT INTO intake_submissions
         (name, salon, email, phone, size, calls, booking_system, services, pain_points, decision, submitted_at, ip)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [name, salon, email, phone || null, size || null, calls || null,
        bookingSystem || null, services || null, painPoints || null,
        decision || null, submittedAt || new Date().toISOString(), ip]
-    );
-
-    // Send admin email (non-blocking — don't fail the response if email fails)
-    sendAdminEmail({ name, salon, email, phone, size, calls, bookingSystem, services, painPoints, decision, submittedAt, ip })
-      .catch(err => console.error('Email error:', err.message));
-
-    return res.json({ ok: true, message: 'Submission received.' });
-  } catch (err) {
-    console.error('DB error:', err.message);
-    return res.status(500).json({ ok: false, error: 'Server error. Please try again.' });
+    ).catch(err => console.error('DB error (non-fatal):', err.message));
   }
+
+  return res.json({ ok: true, message: 'Submission received.' });
 });
 
 // ── GET /api/submissions (simple auth-guarded admin view) ──
