@@ -98,7 +98,7 @@ async function sendAdminEmail(data) {
     .join('\n  • ');
 
   const fromName  = process.env.EMAIL_FROM_NAME  || 'The Salon Agent';
-  const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.SMTP_USER || 'noreply@thesalonagent.com';
+  const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.SMTP_USER || 'noreply@auraandvibes.com';
 
   await transport.sendMail({
     from:    `"${fromName}" <${fromEmail}>`,
