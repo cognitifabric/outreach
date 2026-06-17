@@ -230,11 +230,11 @@ document.querySelectorAll('.faq-q').forEach(btn => {
       email:         document.getElementById('f-email')?.value || '',
       phone:         document.getElementById('f-phone')?.value || '',
       size:          document.getElementById('f-size')?.value || '',
-      callsPerWeek:  document.getElementById('f-calls')?.value || '',
+      calls:         document.getElementById('f-calls')?.value || '',
       bookingSystem: document.getElementById('f-booking')?.value || '',
       services:      document.getElementById('f-services')?.value || '',
       painPoints:    [...form.querySelectorAll('input[name="pain"]:checked')].map(c => c.value).join(', '),
-      decisionMaker: document.getElementById('f-decision')?.value || '',
+      decision:      document.getElementById('f-decision')?.value || '',
       submittedAt:   new Date().toISOString(),
     };
 
