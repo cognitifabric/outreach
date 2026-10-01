@@ -82,41 +82,18 @@ mobileMenu.querySelectorAll('a').forEach(a => {
   rafId = requestAnimationFrame(tick);
 })();
 
-/* ── ROI Calculator ───────────────────────────────────────── */
+/* Contribution illustration: completed incremental appointments, not speculative lost revenue. */
 (function initROI() {
-  const sliderCalls   = document.getElementById('slider-calls');
-  const sliderBooking = document.getElementById('slider-booking');
-  const sliderPct     = document.getElementById('slider-pct');
-  if (!sliderCalls) return;
-
-  const valCalls   = document.getElementById('val-calls');
-  const valBooking = document.getElementById('val-booking');
-  const valPct     = document.getElementById('val-pct');
-  const roiLost    = document.getElementById('roi-lost');
-  const roiDetail  = document.getElementById('roi-detail');
-  const roiMult    = document.getElementById('roi-multiplier');
-
-  function update() {
-    const calls   = parseInt(sliderCalls.value, 10);
-    const booking = parseInt(sliderBooking.value, 10);
-    const pct     = parseInt(sliderPct.value, 10);
-
-    valCalls.textContent   = calls;
-    valBooking.textContent = booking;
-    valPct.textContent     = pct;
-
-    const missedPerMonth = calls * 4.3;
-    const lostPerMonth = Math.round(missedPerMonth * (pct / 100) * booking);
-    const multiplier = (lostPerMonth / 599).toFixed(1);
-
-    roiLost.textContent = '$' + lostPerMonth.toLocaleString();
-    roiMult.textContent = multiplier + '×';
+  const calls=document.getElementById('slider-calls'),booking=document.getElementById('slider-booking'),pct=document.getElementById('slider-pct'),fee=document.getElementById('roi-fee');
+  function update(){
+    const a=Number(calls.value),t=Number(booking.value),m=Number(pct.value),f=fee.value===''?NaN:Number(fee.value);
+    document.getElementById('val-calls').textContent=a;document.getElementById('val-booking').textContent=t;document.getElementById('val-pct').textContent=m;
+    if(!Number.isFinite(f)||f<0){document.getElementById('roi-lost').textContent='Enter a fee';document.getElementById('roi-detail').textContent='Enter a nonnegative monthly fee.';return}
+    const per=t*m/100;
+    document.getElementById('roi-lost').textContent=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(a*per-f);
+    document.getElementById('roi-detail').textContent=per>0 ? Math.ceil(f/per)+' additional completed appointments would cover the fee.' : f===0?'No monthly fee to cover.':'Positive contribution per appointment is needed to cover the fee.';
   }
-
-  sliderCalls.addEventListener('input', update);
-  sliderBooking.addEventListener('input', update);
-  sliderPct.addEventListener('input', update);
-  update();
+  [calls,booking,pct,fee].forEach(el=>el.addEventListener('input',update));update();
 })();
 
 /* ── FAQ Accordion ────────────────────────────────────────── */
@@ -130,11 +107,13 @@ document.querySelectorAll('.faq-q').forEach(btn => {
     document.querySelectorAll('.faq-item.open').forEach(el => {
       el.classList.remove('open');
       el.querySelector('.faq-a').classList.remove('open');
+      el.querySelector('.faq-q').setAttribute('aria-expanded','false');
     });
 
     if (!isOpen) {
       item.classList.add('open');
       ans.classList.add('open');
+      btn.setAttribute('aria-expanded','true');
     }
   });
 });
@@ -222,6 +201,8 @@ document.querySelectorAll('.faq-q').forEach(btn => {
     submitBtn.disabled = true;
     submitText.style.display = 'none';
     submitLoad.style.display = 'inline';
+    const errorBox = document.getElementById('form-error');
+    errorBox.hidden = true;
 
     // Gather data
     const data = {
@@ -239,21 +220,34 @@ document.querySelectorAll('.faq-q').forEach(btn => {
     };
 
     try {
-      // Replace with your actual submission endpoint
       const endpoint = form.dataset.endpoint || '/api/intake';
-      await fetch(endpoint, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        signal: AbortSignal.timeout(15000),
       });
-    } catch (_err) {
-      // Still show success even if endpoint isn't wired yet
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) throw new Error(result.error || 'We could not save your enquiry. Please try again.');
+      document.getElementById('submission-reference').textContent = 'Enquiry reference: ' + result.id;
+    } catch (err) {
+      errorBox.querySelector('.error-text').textContent = ['TimeoutError', 'TypeError'].includes(err.name)
+        ? 'We could not confirm that your enquiry was saved. Your details are still here; try again or message us on Instagram.'
+        : err.message || 'We could not save your enquiry. Please try again or contact us on Instagram.';
+      errorBox.hidden = false;
+      errorBox.focus();
+      submitBtn.disabled = false;
+      submitText.style.display = '';
+      submitLoad.style.display = 'none';
+      return;
     }
 
     // Show success
     panels.forEach(p => p.classList.remove('active'));
     document.querySelector('.form-steps').style.display = 'none';
     success.style.display = 'block';
+    success.setAttribute('tabindex', '-1');
+    success.focus();
   });
 
   function highlightEmpty(fields) {
@@ -276,6 +270,18 @@ document.querySelectorAll('.faq-q').forEach(btn => {
     el.addEventListener('input', () => { el.style.borderColor = ''; });
   });
 })();
+
+/* Keep a usable contact path when durable storage has not been configured. */
+fetch('/api/public-config').then(r => {
+  if (!r.ok) throw new Error('Configuration unavailable');
+  return r.json();
+}).then(config => {
+  if (!config.intakeEnabled) {
+    document.getElementById('intake-unavailable').hidden = false;
+    document.getElementById('intake-form').hidden = true;
+    document.querySelector('.form-steps').hidden = true;
+  }
+}).catch(() => {});
 
 /* ── Demo transcript animation ────────────────────────────── */
 (function initDemo() {
@@ -332,7 +338,9 @@ document.querySelectorAll('.faq-q').forEach(btn => {
 /* ── Smooth anchor scroll (offset for fixed nav) ─────────── */
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {
-    const target = document.querySelector(a.getAttribute('href'));
+    const href = a.getAttribute('href');
+    if (href === '#') return;
+    const target = document.querySelector(href);
     if (target) {
       e.preventDefault();
       const offset = 80;

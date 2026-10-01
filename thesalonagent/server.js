@@ -1,233 +1,95 @@
 require('dotenv').config();
-const express  = require('express');
-const path     = require('path');
+const express = require('express');
+const path = require('path');
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
+const INSTAGRAM = 'https://www.instagram.com/thesalonagent/';
+const FIELDS = { name:120, salon:160, email:254, phone:40, size:40, calls:40, bookingSystem:120, services:2000, painPoints:500, decision:40 };
 
-const app  = express();
-const PORT = process.env.PORT || 3000;
-
-// ── Middleware ─────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname)));
-
-// ── Database ───────────────────────────────────────────────
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
-    ? { rejectUnauthorized: false }
-    : false,
-});
-
-async function initDb() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS intake_submissions (
-      id             SERIAL PRIMARY KEY,
-      name           TEXT NOT NULL,
-      salon          TEXT NOT NULL,
-      email          TEXT NOT NULL,
-      phone          TEXT,
-      size           TEXT,
-      calls          TEXT,
-      booking_system TEXT,
-      services       TEXT,
-      pain_points    TEXT,
-      decision       TEXT,
-      submitted_at   TIMESTAMPTZ DEFAULT NOW(),
-      ip             TEXT
-    );
-  `);
-  console.log('Database table ready.');
+function validateIntake(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const data = {};
+  for (const [key,limit] of Object.entries(FIELDS)) {
+    const value = body[key] ?? '';
+    if (typeof value !== 'string' || value.length > limit || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) return null;
+    data[key] = value.trim();
+  }
+  if (!data.name || !data.salon || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) || /[\r\n]/.test(data.email)) return null;
+  return data;
 }
-
-// ── Email transport ────────────────────────────────────────
+async function initDb(db) {
+  await db.query(`CREATE TABLE IF NOT EXISTS intake_submissions (
+    id SERIAL PRIMARY KEY, name TEXT NOT NULL, salon TEXT NOT NULL,
+    email TEXT NOT NULL, phone TEXT, size TEXT, calls TEXT,
+    booking_system TEXT, services TEXT, pain_points TEXT,
+    decision TEXT, submitted_at TIMESTAMPTZ DEFAULT NOW(), ip TEXT
+  )`);
+}
 function createTransport() {
-  // Resend SMTP (preferred)
-  if (process.env.RESEND_API_KEY) {
-    return nodemailer.createTransport({
-      host:   'smtp.resend.com',
-      port:   587,
-      secure: false,
-      auth: {
-        user: 'resend',
-        pass: process.env.RESEND_API_KEY,
-      },
-    });
-  }
-  // Generic SMTP fallback
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host:   process.env.SMTP_HOST,
-      port:   parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  // Fallback: no email configured
+  if (process.env.RESEND_API_KEY) return nodemailer.createTransport({host:'smtp.resend.com',port:587,secure:false,auth:{user:'resend',pass:process.env.RESEND_API_KEY}});
+  if (process.env.SMTP_HOST) return nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT || 587),secure:process.env.SMTP_SECURE === 'true',auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}});
   return null;
 }
-
 async function sendAdminEmail(data) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) {
-    console.log('ADMIN_EMAIL not set — skipping email notification.');
-    return;
-  }
-  const transport = createTransport();
-  if (!transport) {
-    console.log('SMTP not configured — skipping email notification.');
-    return;
-  }
-
-  const painMap = {
-    missed_calls: '📵 Missed calls losing bookings',
-    after_hours:  '🌙 No one to answer after hours',
-    no_shows:     '🚫 High no-show / no deposit rate',
-    interruptions:'📞 Calls interrupting services',
-    staff_cost:   '💸 Receptionist costs too much',
-    reschedules:  '🔄 Too many reschedules to manage',
-  };
-  const painLabels = (data.painPoints || '')
-    .split(',')
-    .map(p => painMap[p.trim()] || p.trim())
-    .filter(Boolean)
-    .join('\n  • ');
-
-  const fromName  = process.env.EMAIL_FROM_NAME  || 'The Salon Agent';
-  const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.SMTP_USER || 'noreply@auraandvibes.com';
-
+  const fromEmail=process.env.EMAIL_FROM_EMAIL,adminEmail=process.env.ADMIN_EMAIL,transport=createTransport();
+  if (!transport || !fromEmail || !adminEmail) return;
   await transport.sendMail({
-    from:    `"${fromName}" <${fromEmail}>`,
-    to:      adminEmail,
-    subject: `🎯 New Intake: ${data.salon} (${data.name})`,
-    text: [
-      '── NEW INTAKE SUBMISSION ──────────────────────',
-      '',
-      `Name:            ${data.name}`,
-      `Salon:           ${data.salon}`,
-      `Email:           ${data.email}`,
-      `Phone:           ${data.phone || '—'}`,
-      `Staff size:      ${data.size || '—'}`,
-      `Calls/week:      ${data.calls || '—'}`,
-      `Booking system:  ${data.bookingSystem || '—'}`,
-      `Decision maker:  ${data.decision || '—'}`,
-      '',
-      'Services offered:',
-      `  ${data.services || '—'}`,
-      '',
-      'Pain points:',
-      `  • ${painLabels || '—'}`,
-      '',
-      `Submitted:       ${data.submittedAt}`,
-      `IP:              ${data.ip || '—'}`,
-      '',
-      '───────────────────────────────────────────────',
-    ].join('\n'),
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-        <div style="background:#1a1a2e;padding:24px 32px">
-          <h2 style="color:#fff;margin:0;font-size:20px">🎯 New Intake Submission</h2>
-          <p style="color:#a78bfa;margin:6px 0 0">The Salon Agent</p>
-        </div>
-        <div style="padding:32px">
-          <table style="width:100%;border-collapse:collapse">
-            <tr><td style="padding:8px 0;color:#6b7280;width:140px">Name</td><td style="padding:8px 0;font-weight:600">${data.name}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Salon</td><td style="padding:8px 4px;font-weight:600">${data.salon}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Email</td><td style="padding:8px 0"><a href="mailto:${data.email}" style="color:#7c3aed">${data.email}</a></td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Phone</td><td style="padding:8px 4px">${data.phone || '—'}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Staff size</td><td style="padding:8px 0">${data.size || '—'}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Calls/week</td><td style="padding:8px 4px">${data.calls || '—'}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Booking system</td><td style="padding:8px 0">${data.bookingSystem || '—'}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Decision maker</td><td style="padding:8px 4px">${data.decision || '—'}</td></tr>
-          </table>
-          <div style="margin-top:24px;padding:16px;background:#f5f3ff;border-radius:8px;border-left:4px solid #7c3aed">
-            <p style="margin:0 0 8px;font-weight:600;color:#1a1a2e">Services offered</p>
-            <p style="margin:0;color:#374151">${(data.services || '—').replace(/\n/g, '<br>')}</p>
-          </div>
-          ${painLabels ? `<div style="margin-top:16px;padding:16px;background:#fdf4ff;border-radius:8px">
-            <p style="margin:0 0 8px;font-weight:600;color:#1a1a2e">Pain points</p>
-            <p style="margin:0;color:#374151">${painLabels.replace(/\n/g, '<br>')}</p>
-          </div>` : ''}
-          <p style="margin-top:24px;color:#9ca3af;font-size:13px">Submitted ${data.submittedAt} · IP ${data.ip || '—'}</p>
-        </div>
-      </div>
-    `,
+    from:{name:process.env.EMAIL_FROM_NAME || 'The Salon Agent',address:fromEmail},to:adminEmail,replyTo:data.email,
+    subject:`New salon enquiry #${data.id}`,
+    text:[`Enquiry ID: ${data.id}`,`Name: ${data.name}`,`Salon: ${data.salon}`,`Email: ${data.email}`,`Phone: ${data.phone || 'Not provided'}`,`Staff size: ${data.size}`,`Calls/week: ${data.calls}`,`Booking system: ${data.bookingSystem}`,`Services: ${data.services}`,`Needs: ${data.painPoints}`,`Decision maker: ${data.decision}`,`Received: ${data.submittedAt}`,'This enquiry was saved before the notification was sent.'].join('\n')
   });
-  console.log(`Admin email sent to ${adminEmail}`);
 }
-
-// ── POST /api/intake ───────────────────────────────────────
-app.post('/api/intake', async (req, res) => {
-  const {
-    name, salon, email, phone,
-    size, calls, bookingSystem, services,
-    painPoints, decision, submittedAt,
-  } = req.body;
-
-  // Basic validation
-  if (!name || !salon || !email) {
-    return res.status(400).json({ ok: false, error: 'Missing required fields.' });
-  }
-
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-
-  const data = { name, salon, email, phone, size, calls, bookingSystem, services, painPoints, decision, submittedAt, ip };
-
-  // Send admin email immediately — do NOT wait for DB
-  sendAdminEmail(data).catch(err => console.error('Email error:', err.message));
-
-  // Save to DB (best-effort — don't fail the response if DB is down)
-  if (process.env.DATABASE_URL) {
-    pool.query(
-      `INSERT INTO intake_submissions
-        (name, salon, email, phone, size, calls, booking_system, services, pain_points, decision, submitted_at, ip)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      [name, salon, email, phone || null, size || null, calls || null,
-       bookingSystem || null, services || null, painPoints || null,
-       decision || null, submittedAt || new Date().toISOString(), ip]
-    ).catch(err => console.error('DB error (non-fatal):', err.message));
-  }
-
-  return res.json({ ok: true, message: 'Submission received.' });
-});
-
-// ── GET /api/submissions (simple auth-guarded admin view) ──
-app.get('/api/submissions', async (req, res) => {
-  const token = req.headers['x-admin-token'] || req.query.token;
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  try {
-    const result = await pool.query('SELECT * FROM intake_submissions ORDER BY submitted_at DESC LIMIT 200');
-    res.json({ count: result.rowCount, submissions: result.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Health check ───────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ ok: true }));
-
-// ── Catch-all: serve index.html ────────────────────────────
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// ── Start ──────────────────────────────────────────────────
+function createApp({db=null,notify=sendAdminEmail,adminToken=process.env.ADMIN_TOKEN,logger=console}={}) {
+  const app=express();
+  app.disable('x-powered-by');app.set('trust proxy',1);
+  app.use(express.json({limit:'16kb'}));app.use(express.urlencoded({extended:false,limit:'16kb'}));
+  app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','strict-origin-when-cross-origin');next()});
+  // Serve intentionally public assets, never the server directory wholesale.
+  for (const file of ['index.html','app.js','style.css','privacy.html']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
+  app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'index.html')));
+  app.get('/health',(_req,res)=>res.json({ok:true}));
+  app.get('/api/public-config',(_req,res)=>res.json({intakeEnabled:Boolean(db),contactUrl:INSTAGRAM}));
+  const attempts=new Map();
+  app.post('/api/intake',async(req,res)=>{
+    const now=Date.now(),key=req.ip,active=attempts.get(key);
+    if(active && active.until>now && active.count>=10) {res.set('Retry-After',String(Math.ceil((active.until-now)/1000)));return res.status(429).json({ok:false,error:'Too many attempts. Please try again later or contact us on Instagram.'})}
+    if(attempts.size>=10000) for(const [ip,entry] of attempts) if(entry.until<=now) attempts.delete(ip);
+    if(!active && attempts.size>=10000) return res.status(429).json({ok:false,error:'Please try again later.'});
+    attempts.set(key,active && active.until>now ? {...active,count:active.count+1} : {count:1,until:now+60000});
+    const data=validateIntake(req.body);
+    if(!data) return res.status(400).json({ok:false,error:'Check your name, salon name and email, and keep responses within the field limits.'});
+    if(!db) return res.status(503).json({ok:false,error:'The enquiry form is temporarily unavailable. Please message @thesalonagent on Instagram.',contactUrl:INSTAGRAM});
+    try {
+      data.submittedAt=new Date().toISOString();
+      const result=await db.query(`INSERT INTO intake_submissions (name,salon,email,phone,size,calls,booking_system,services,pain_points,decision,submitted_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        [data.name,data.salon,data.email,data.phone||null,data.size||null,data.calls||null,data.bookingSystem||null,data.services||null,data.painPoints||null,data.decision||null,data.submittedAt]);
+      data.id=result.rows[0].id;
+    } catch {
+      logger.error('Intake storage failed; enquiry was not acknowledged.');
+      return res.status(503).json({ok:false,error:'We could not save your enquiry. Your details are still on this page; try again or message us on Instagram.',contactUrl:INSTAGRAM});
+    }
+    res.status(201).json({ok:true,id:data.id,message:'Your enquiry has been saved.'});
+    Promise.resolve().then(()=>notify(data)).catch(()=>logger.error(`Notification failed for saved enquiry ${data.id}; retrieve it from the admin view.`));
+  });
+  app.get('/api/submissions',async(req,res)=>{
+    if(!adminToken || req.headers['x-admin-token']!==adminToken) return res.status(401).json({error:'Unauthorized'});
+    if(!db) return res.status(503).json({error:'Lead storage is unavailable.'});
+    try {const result=await db.query('SELECT * FROM intake_submissions ORDER BY submitted_at DESC LIMIT 200');res.set('Cache-Control','no-store').json({count:result.rowCount,submissions:result.rows})}
+    catch {res.status(503).json({error:'Lead storage is temporarily unavailable.'})}
+  });
+  app.use((err,_req,res,_next)=>{const status=err.type==='entity.too.large'?413:err instanceof SyntaxError?400:500;res.status(status).json({ok:false,error:status===413?'Submission is too large.':'Could not process this request.'})});
+  app.use((_req,res)=>res.status(404).send('Not found'));
+  return app;
+}
 async function start() {
-  if (process.env.DATABASE_URL) {
-    await initDb().catch(err => {
-      console.error('DB init failed:', err.message);
-      process.exit(1);
-    });
-  } else {
-    console.warn('WARNING: DATABASE_URL not set. Submissions will not be persisted.');
-  }
-  app.listen(PORT, () => console.log(`The Salon Agent running on port ${PORT}`));
+  const db=process.env.DATABASE_URL ? new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:5000,query_timeout:8000,ssl:process.env.DATABASE_URL.includes('railway')?{rejectUnauthorized:false}:false}) : null;
+  if(db) await initDb(db);
+  else console.warn('Lead storage is not configured. The site will offer Instagram contact instead of accepting enquiries.');
+  const app=createApp({db});
+  const server=app.listen(process.env.PORT||3000,()=>console.log('The Salon Agent is running.'));
+  const shutdown=()=>server.close(async()=>{if(db)await db.end();process.exit(0)});
+  process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
 }
-
-start();
+if(require.main===module) start().catch(()=>{console.error('Startup failed; check database configuration.');process.exitCode=1});
+module.exports={createApp,validateIntake,initDb};
