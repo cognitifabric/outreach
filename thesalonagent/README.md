@@ -14,15 +14,23 @@ Use Node 20 or later. Set deployment variables through Railway and keep local `.
 
 ## Railway setup
 
-Target the **outreach** service in **webhooks apis and subdomains**. Preserve its existing PostgreSQL database and variables.
+Target the **outreach** service in **webhooks apis and subdomains**. Preserve unrelated services and existing email variables. The outreach database can be hosted in Supabase.
 
-1. Set `DATABASE_URL` to the service's PostgreSQL reference. Set `DATABASE_SCHEMA=outreach` when sharing a database so the outreach tables have their own namespace. The default is `public` for compatibility with existing outreach records. Startup creates missing schemas/tables and adds columns without deleting existing enquiries. A schema separates table names; it does not restrict the database credentials' permissions. `DATABASE_SSL=true` requires a trusted TLS endpoint; Railway's private database connection normally uses the default false setting.
+1. Set `DATABASE_URL` using the Supabase instructions below, or a Railway PostgreSQL reference. Set `DATABASE_SCHEMA=outreach`. The default is `public` for compatibility with existing outreach records. Startup creates missing schemas/tables and adds columns without deleting existing enquiries. A schema separates table names; it does not restrict the database credentials' permissions. Railway's private database connection normally uses `DATABASE_SSL=false`.
 2. Set a random `ADMIN_SETUP_TOKEN` of at least 32 characters. Visit `/admin` over HTTPS and personally enter your name, email, setup key and a new password (12–128 characters). Only one active owner can be created. Remove the setup variable after setup; existing account login still works.
 3. Set `EMAIL_FROM_EMAIL` to a verified sender, `EMAIL_FROM_NAME` if desired, and either `RESEND_API_KEY` or the documented `SMTP_*` variables in `.env.example`. Generic SMTP requires TLS. A working mailbox at the recipient address does not itself configure outbound sending.
 4. Set `PUBLIC_SITE_URL` to the live URL so alerts link to the shared dashboard. A custom domain is optional for launch.
 5. Submit a clearly labelled release-test enquiry and verify it in the dashboard and in the recipient inbox. `/health` confirms the process, not email arrival.
 
 The initial notification recipient is **contact@fabricioguardia.com**. The owner can add/remove up to ten recipients in **Email notifications**. Changes apply to future enquiries; previously saved enquiries retain their original recipient snapshot. Each recipient receives a separate message. Reply-to is the prospect's submitted email. Recipients do not automatically gain dashboard access.
+
+## Supabase database
+
+Create a separate outreach project in Supabase and personally choose its database password. In the project's **Connect** dialog, copy the **Session pooler** PostgreSQL connection string on port **5432**. This supports Railway's IPv4 connection and retains the session state used by the app. Do not use the transaction pooler on port 6543. Use the exact host and username supplied by Supabase; percent-encode reserved characters in the password when putting it in a URI.
+
+Set the connection privately in Railway's outreach service as `DATABASE_URL`, with `DATABASE_SSL=true` and `DATABASE_SCHEMA=outreach`. Certificate verification stays enabled. If a project CA is required, download it from Supabase's database settings and set its PEM contents in `DATABASE_SSL_CA` (real newlines or escaped `\n` both work). Restart the service and confirm database initialization before creating the owner account.
+
+The server connects directly to PostgreSQL. No Supabase API key is needed in browser code, and the `outreach` schema should remain unexposed through Supabase's Data API. Existing individual dashboard accounts continue to use the app's authentication. See [Supabase connection documentation](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 ## Team workflow
 

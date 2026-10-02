@@ -3,7 +3,7 @@ const express=require('express');
 const path=require('path');
 const {randomUUID}=require('crypto');
 const {Pool}=require('pg');
-const {initDb}=require('./db');
+const {initDb,databaseOptions}=require('./db');
 const {mountAuth}=require('./auth');
 const {validEmail,normalizeRecipients,createTransport,notificationMessage,createNotificationWorker}=require('./notifications');
 const INSTAGRAM='https://www.instagram.com/thesalonagent/';
@@ -104,8 +104,7 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
 }
 async function start() {
   const schema=process.env.DATABASE_SCHEMA || 'public';
-  if(!/^[a-z][a-z0-9_]{0,62}$/.test(schema)) throw new Error('Invalid database schema');
-  const db=process.env.DATABASE_URL ? new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:5000,query_timeout:8000,options:`-c search_path=${schema}`,ssl:process.env.DATABASE_SSL==='true'?{rejectUnauthorized:true}:undefined}) : null;
+  const db=process.env.DATABASE_URL ? new Pool(databaseOptions()) : null;
   if(db) {await db.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);await initDb(db)}else console.warn('Lead storage unavailable; direct contact fallback enabled.');
   const transport=createTransport(),notificationsConfigured=Boolean(transport && validEmail(process.env.EMAIL_FROM_EMAIL || ''));
   if(!notificationsConfigured) console.warn('Configure a verified email sender before launch. Alerts remain queued.');

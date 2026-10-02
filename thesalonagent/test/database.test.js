@@ -3,13 +3,17 @@ const assert=require('node:assert/strict');
 const {Pool}=require('pg');
 const {randomUUID}=require('crypto');
 const {createApp,initDb}=require('../server');
+const {databaseOptions}=require('../db');
 const {createNotificationWorker}=require('../notifications');
 test('PostgreSQL: accounts, durable enquiries, recipient changes, retries and concurrent edits',{skip:!process.env.TEST_DATABASE_URL},async()=>{
   const root=new Pool({connectionString:process.env.TEST_DATABASE_URL}),schema='outreach_qa_'+randomUUID().replaceAll('-','');
   await root.query(`CREATE SCHEMA ${schema}`);
-  const db=new Pool({connectionString:process.env.TEST_DATABASE_URL,options:`-c search_path=${schema}`});
+  const db=new Pool(databaseOptions({DATABASE_URL:process.env.TEST_DATABASE_URL,DATABASE_SCHEMA:schema}));
   let server;
   try {
+    const clients=await Promise.all([db.connect(),db.connect()]);
+    try {for(const client of clients) assert.equal((await client.query('SELECT current_schema() AS schema')).rows[0].schema,schema)}
+    finally {for(const client of clients) client.release()}
     await initDb(db);await initDb(db);
     const deliveries=[];let partnerFails=true;
     const drain=createNotificationWorker({db,send:async(lead,email)=>{if(email==='partner@example.invalid' && partnerFails)throw new Error('Fictional delivery failure');deliveries.push({id:lead.id,email})},logger:{error(){}}});

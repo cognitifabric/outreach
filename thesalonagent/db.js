@@ -1,3 +1,20 @@
+function databaseOptions(env=process.env) {
+  const schema=env.DATABASE_SCHEMA || 'public';
+  if(!/^[a-z][a-z0-9_]{0,62}$/.test(schema)) throw new Error('Invalid database schema');
+  const url=new URL(env.DATABASE_URL);
+  if(url.hostname.endsWith('.pooler.supabase.com') && url.port==='6543') throw new Error('Use the Supabase session pooler on port 5432');
+  let ssl;
+  if(env.DATABASE_SSL==='true') {
+    // URI SSL parameters override pg's ssl object. Keep strict verification
+    // and the supplied project CA when configuring TLS explicitly.
+    for(const key of ['ssl','sslmode','sslcert','sslkey','sslrootcert']) url.searchParams.delete(key);
+    ssl={rejectUnauthorized:true,...(env.DATABASE_SSL_CA?{ca:env.DATABASE_SSL_CA.replace(/\\n/g,'\n')}:{})};
+  }
+  return {connectionString:url.toString(),connectionTimeoutMillis:5000,query_timeout:8000,max:5,ssl,
+    // Await schema selection on every physical session, including new pool
+    // connections. Pooler startup options are not required for isolation.
+    onConnect:client=>client.query("SELECT set_config('search_path',$1,false)",[schema])};
+}
 async function initDb(db) {
   await db.query(`CREATE TABLE IF NOT EXISTS intake_submissions (
     id SERIAL PRIMARY KEY,name TEXT NOT NULL,salon TEXT NOT NULL,email TEXT NOT NULL,
@@ -42,4 +59,4 @@ async function initDb(db) {
     created_by UUID REFERENCES admin_users(id),expires_at TIMESTAMPTZ NOT NULL,used_at TIMESTAMPTZ
   )`);
 }
-module.exports={initDb};
+module.exports={initDb,databaseOptions};
