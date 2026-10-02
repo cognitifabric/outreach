@@ -17,7 +17,7 @@ function validateIntake(body) {
     if(typeof value!=='string' || value.length>limit || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) return null;
     data[key]=value.trim();
   }
-  if(!data.name || !data.salon || !validEmail(data.email)) return null;
+  if(!data.name || !validEmail(data.email)) return null;
   if(body.requestKey && (typeof body.requestKey!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestKey))) return null;
   data.requestKey=body.requestKey || randomUUID();
   return data;
@@ -47,7 +47,7 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
   app.post('/api/intake',rateLimit,async(req,res)=>{
     if(req.body?.companyFax) return res.status(400).json({ok:false,error:'Could not process this enquiry.'});
     const data=validateIntake(req.body);
-    if(!data) return res.status(400).json({ok:false,error:'Check your name, business name and email, and keep responses within the field limits.'});
+    if(!data) return res.status(400).json({ok:false,error:'Check your name and email, and keep responses within the field limits.'});
     if(!db) return res.status(503).json({ok:false,error:'The form is temporarily unavailable. Email contact@fabricioguardia.com or message us on Instagram.',contactUrl:INSTAGRAM});
     try {
       // Save the lead and a separate notification for every configured recipient

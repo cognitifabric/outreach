@@ -14,9 +14,9 @@ function createTransport(env=process.env) {
 function notificationMessage(data,recipient,env=process.env) {
   const ref=createHash('sha256').update(`${data.id}:${recipient}`).digest('hex').slice(0,24);
   return {from:{name:env.EMAIL_FROM_NAME || 'The Salon Agent',address:env.EMAIL_FROM_EMAIL},to:recipient,replyTo:data.email,
-    subject:`New business enquiry #${data.id}: ${data.salon.replace(/[\r\n]/g,' ')}`,
+    subject:`New business enquiry #${data.id}: ${(data.salon || data.name).replace(/[\r\n]/g,' ')}`,
     headers:{'Resend-Idempotency-Key':`lead/${data.id}/${ref}`},
-    text:[`Enquiry #${data.id}`,`Name: ${data.name}`,`Business: ${data.salon}`,`Type: ${data.business_type || ''}`,`Email: ${data.email}`,`Phone: ${data.phone || 'Not provided'}`,`Preferred contact: ${data.contact_preference || 'Email'}`,`Booking system: ${data.booking_system || 'Not supplied'}`,`Workflow: ${data.services || ''}`,`Needs: ${data.pain_points || ''}`,`Team size: ${data.size || ''}`,`Calls/week: ${data.calls || ''}`,`Source: ${data.source || ''}`,`Received: ${new Date(data.submitted_at).toISOString()}`,env.PUBLIC_SITE_URL ? `Shared inbox: ${env.PUBLIC_SITE_URL.replace(/\/$/,'')}/admin` : '', 'This enquiry is saved. Assign a team member in the dashboard before replying.'].filter(Boolean).join('\n')};
+    text:[`Enquiry #${data.id}`,`Name: ${data.name}`,`Business: ${data.salon || 'Not supplied'}`,`Type: ${data.business_type || ''}`,`Email: ${data.email}`,`Phone: ${data.phone || 'Not provided'}`,`Preferred contact: ${data.contact_preference || 'Email'}`,`Booking system: ${data.booking_system || 'Not supplied'}`,`Workflow: ${data.services || ''}`,`Needs: ${data.pain_points || ''}`,`Team size: ${data.size || ''}`,`Calls/week: ${data.calls || ''}`,`Source: ${data.source || ''}`,`Received: ${new Date(data.submitted_at).toISOString()}`,env.PUBLIC_SITE_URL ? `Shared inbox: ${env.PUBLIC_SITE_URL.replace(/\/$/,'')}/admin` : '', 'This enquiry is saved. Assign a team member in the dashboard before replying.'].filter(Boolean).join('\n')};
 }
 function createNotificationWorker({db,send,logger=console}) {
   let running=false;

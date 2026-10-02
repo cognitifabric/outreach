@@ -52,6 +52,13 @@ test('PostgreSQL: accounts, durable enquiries, recipient changes, retries and co
     assert.equal((await req('/api/admin/activate','POST',{token,password:'fictional-partner-password'})).status,400);
     assert.equal((await req(`/api/admin/team/${identity.id}`,'PATCH',{active:false},owner)).status,200);
     assert.equal((await req('/api/submissions','GET',null,partner)).status,401);
+    const individual=await req('/api/intake','POST',{name:'Fictional Individual',email:'individual@example.invalid'});
+    assert.equal(individual.status,201);
+    const individualId=(await individual.json()).id;
+    const inbox=await (await req('/api/submissions','GET',null,owner)).json();
+    const individualLead=inbox.submissions.find(lead=>lead.id===individualId);
+    assert.equal(individualLead.name,'Fictional Individual');assert.equal(individualLead.salon,'');
+    assert.deepEqual(individualLead.notifications.map(n=>n.recipient).sort(),['contact@fabricioguardia.com','future@example.invalid']);
     assert.equal((await req('/api/admin/logout','POST',{},owner)).status,200);assert.equal((await req('/api/submissions','GET',null,owner)).status,401);
   } finally {if(server)await new Promise(r=>server.close(r));await db.end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end()}
 });

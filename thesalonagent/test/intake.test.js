@@ -51,5 +51,7 @@ test('recipient validation deduplicates and notification headers keep recipients
   const lead={id:1,name:'QA',salon:'Sample Studio',email:'qa@example.invalid',submitted_at:'2026-10-01T20:00:00Z'};
   const a=notificationMessage(lead,'one@example.invalid',{EMAIL_FROM_EMAIL:'sender@example.invalid'}),b=notificationMessage(lead,'two@example.invalid',{EMAIL_FROM_EMAIL:'sender@example.invalid'});
   assert.equal(a.to,'one@example.invalid');assert.equal(a.replyTo,lead.email);assert.notEqual(a.headers['Resend-Idempotency-Key'],b.headers['Resend-Idempotency-Key']);assert.equal(a.headers['Resend-Idempotency-Key'],notificationMessage(lead,a.to,{}).headers['Resend-Idempotency-Key']);
+  const individual=notificationMessage({...lead,name:'Interested Person',salon:''},a.to,{});
+  assert.equal(individual.subject,'New business enquiry #1: Interested Person');assert.match(individual.text,/Business: Not supplied/);
 });
 module.exports={withServer,fixture};
