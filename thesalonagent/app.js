@@ -1,351 +1,128 @@
-/* ============================================================
-   THE SALON AGENT — app.js
-   ============================================================ */
+const $=s=>document.querySelector(s);
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+$('.menu-toggle').addEventListener('click',()=>{const open=$('#mobile-nav').hidden;$('#mobile-nav').hidden=!open;$('.menu-toggle').setAttribute('aria-expanded',String(open));$('.menu-toggle').setAttribute('aria-label',open?'Close navigation':'Open navigation')});
+$('#mobile-nav').querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{$('#mobile-nav').hidden=true;$('.menu-toggle').setAttribute('aria-expanded','false')}));
+$('#copyright-year').textContent=new Date().getFullYear();
 
-/* ── Navbar scroll ────────────────────────────────────────── */
-const navbar = document.getElementById('navbar');
-window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 20);
-}, { passive: true });
+const journey=[
+  ['THE ENQUIRY','A warm hello.<br>A useful next step.','“Hi, I’m the studio’s AI assistant. Are you looking for a new set or a fill?”','Understand the request','Service + artist + time','Matched to the right schedule','Details sent by SMS'],
+  ['THE AVAILABILITY','The right artist.<br>A time that fits.','Check the service length, staff hours and connected calendar before offering a time.','Check connected availability','Friday · 11:00 AM','Sample opening with artist Maya','Choose an available time'],
+  ['THE BOOKING','Clear details.<br>Your booking rules.','Create the appointment request and explain any required deposit before it is confirmed.','Follow the business policy','Lash fill · Maya','Example hold · deposit pending','Appointment + deposit link'],
+  ['THE FOLLOW-UP','A clear next step.<br>Less chasing.','Send approved appointment details and a deposit reminder when the client still needs to act.','Keep status visible','Payment status updated','Sample deposit marked paid','Confirmation + reminder'],
+  ['THE TEAM HANDOFF','A person,<br>when it matters.','If the client asks for a person or the request falls outside the rules, collect it for your team.','Create a callback request','Client context in one place','Appointment history + team notes','Callback request for staff']
+];
+let sceneStep=0,sceneTimer;
+function renderScene(index) {
+  sceneStep=index;const data=journey[index];
+  $('#scene-label').textContent=`0${index+1} / ${data[0]}`;
+  $('#scene-title').innerHTML=data[1];$('#scene-copy').textContent=data[2];$('#scene-status').textContent=data[3];
+  $('#scene-calendar').textContent=data[4];$('#scene-calendar-detail').textContent=data[5];$('#scene-message').textContent=data[6];
+  document.querySelectorAll('.scene-step').forEach((b,i)=>{b.classList.toggle('active',i===index);b.setAttribute('aria-pressed',String(i===index))});
+}
+function replayScene(){clearInterval(sceneTimer);renderScene(0);if(reducedMotion.matches)return;sceneTimer=setInterval(()=>{if(sceneStep===4){clearInterval(sceneTimer);return}renderScene(sceneStep+1)},2800)}
+document.querySelectorAll('.scene-step').forEach(b=>b.addEventListener('click',()=>{clearInterval(sceneTimer);renderScene(Number(b.dataset.step))}));
+$('#replay-scene').addEventListener('click',replayScene);
+$('#booking-scene').addEventListener('pointermove',e=>{if(reducedMotion.matches || e.pointerType!=='mouse')return;const rect=e.currentTarget.getBoundingClientRect();$('#scene-stack').style.setProperty('--ry',`${-14+(e.clientX-rect.left)/rect.width*16-8}deg`);$('#scene-stack').style.setProperty('--rx',`${7-(e.clientY-rect.top)/rect.height*10+5}deg`)});
+$('#booking-scene').addEventListener('pointerleave',()=>{$('#scene-stack').style.removeProperty('--ry');$('#scene-stack').style.removeProperty('--rx')});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)clearInterval(sceneTimer)});
+reducedMotion.addEventListener('change',()=>{if(reducedMotion.matches)clearInterval(sceneTimer)});
 
-/* ── Mobile menu ──────────────────────────────────────────── */
-const hamburger = document.getElementById('hamburger');
-const mobileMenu = document.getElementById('mobile-menu');
-hamburger.addEventListener('click', () => {
-  mobileMenu.classList.toggle('open');
-});
-mobileMenu.querySelectorAll('a').forEach(a => {
-  a.addEventListener('click', () => mobileMenu.classList.remove('open'));
-});
-
-/* ── Hero canvas (lightweight particle field — no Three.js, no O(n²) lines) ── */
-(function initCanvas() {
-  const canvas = document.getElementById('hero-canvas');
-  if (!canvas) return;
-
-  // Skip on low-end / mobile to save battery
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  if (isMobile) { canvas.style.display = 'none'; return; }
-
-  const ctx = canvas.getContext('2d', { alpha: true });
-  let W, H, particles = [], rafId = null, visible = true;
-
-  const COUNT = 45; // was 80 — fewer particles, much lighter
-
-  function resize() {
-    W = canvas.width  = canvas.offsetWidth;
-    H = canvas.height = canvas.offsetHeight;
-  }
-
-  function create() {
-    particles = Array.from({ length: COUNT }, () => ({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      r: Math.random() * 1.2 + 0.3,
-      vx: (Math.random() - 0.5) * 0.2,
-      vy: (Math.random() - 0.5) * 0.2,
-      a: Math.random() * 0.35 + 0.08,
-    }));
-  }
-
-  function tick() {
-    if (!visible) { rafId = null; return; }
-    ctx.clearRect(0, 0, W, H);
-
-    for (const p of particles) {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0) p.x = W; else if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H; else if (p.y > H) p.y = 0;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-      ctx.fillStyle = `rgba(201,168,76,${p.a})`;
-      ctx.fill();
+const profiles={
+  lashes:{business:'Sunday Lash Studio',service:'Lash fill',duration:'60 minutes',staff:'Maya',client:'Alex Morgan',question:'I’d like a lash fill. What times do you have?',intro:'I’m the studio’s AI assistant. I can help with your booking. We’ll use a sample 60-minute fill with artist Maya.',deposit:40},
+  barber:{business:'Northside Barber Shop',service:'Cut + beard',duration:'45 minutes',staff:'Jordan',client:'Alex Morgan',question:'Can I book a haircut and beard trim?',intro:'I’m the shop’s AI assistant. Let’s find a time for your cut and beard trim with Jordan. This sample service takes 45 minutes.',deposit:20},
+  wellness:{business:'Stillpoint Wellness Studio',service:'Private studio session',duration:'50 minutes',staff:'Riley',client:'Alex Morgan',question:'Do you have an opening for a private session?',intro:'I’m the studio’s AI assistant. I can help with scheduling. We’ll use a sample 50-minute studio session with Riley.',deposit:25}
+};
+let demo={profile:'lashes',scenario:'booking',phase:'start',view:'bookings',slot:'',paid:false,callback:false,booking:false};
+function chatBubble(speaker,text,client=false){const bubble=document.createElement('p');bubble.className='bubble'+(client?' client':'');const label=document.createElement('span');label.className='speaker';label.textContent=speaker;bubble.append(label,document.createTextNode(text));return bubble}
+function option(label,action,primary=false){const b=document.createElement('button');b.type='button';b.className='demo-option'+(primary?' primary':'');b.textContent=label;b.addEventListener('click',action);$('#demo-options').append(b)}
+function record(title,detail,status,tone=''){const row=document.createElement('article');row.className='sample-record';const top=document.createElement('div');top.className='record-top';const h=document.createElement('h4');h.textContent=title;const tag=document.createElement('span');tag.className='record-tag '+tone;tag.textContent=status;top.append(h,tag);const p=document.createElement('p');p.textContent=detail;row.append(top,p);return row}
+function resetDemo(){demo={...demo,phase:'start',slot:'',paid:false,callback:false,booking:false};renderDemo()}
+function renderDemo() {
+  const p=profiles[demo.profile],deposit=$('#demo-deposit').checked;
+  $('#demo-business').textContent=p.business;$('#demo-chat').replaceChildren();$('#demo-options').replaceChildren();
+  document.querySelectorAll('.profile-tab').forEach(b=>{const active=b.dataset.profile===demo.profile;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});
+  document.querySelectorAll('.scenario-tab').forEach(b=>{const active=b.dataset.scenario===demo.scenario;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});
+  const add=(speaker,text,client=false)=>$('#demo-chat').append(chatBubble(speaker,text,client));
+  if(demo.scenario==='callback') {
+    add('SAMPLE CLIENT','I have a question I’d rather discuss with a person.',true);
+    add('AI ASSISTANT',demo.callback?'Your sample callback request is in the team’s queue, with your preferred contact time.':'Of course. I can collect a callback request for the team. What’s the best time to reach you?');
+    if(!demo.callback){option('Request a callback after 3 PM',()=>{demo.callback=true;demo.phase='complete';demo.view='callbacks';renderDemo()},true)}
+    else option('Try another workflow',()=>{demo.scenario='booking';resetDemo()});
+  } else {
+    const reschedule=demo.scenario==='reschedule',sms=demo.scenario==='sms';
+    add(sms?'SAMPLE SMS CLIENT':'SAMPLE CLIENT',reschedule?'Could I move my sample appointment to Friday?':p.question,true);
+    if(demo.phase==='start') {
+      add(sms?'SMS ASSISTANT':'AI ASSISTANT',reschedule?'I can check times that fit your existing service. This fictional request is outside the example late-change window, so a change is allowed.':p.intro);
+      option(reschedule?'Check replacement times':'Find sample openings',()=>{demo.phase='availability';renderDemo()},true);
+    } else if(demo.phase==='availability') {
+      add(sms?'SMS ASSISTANT':'AI ASSISTANT',`The sample calendar has two Friday openings with ${p.staff} for your ${p.duration.toLowerCase().replace('minutes','minute')} service. Which works for you?`);
+      for(const time of ['11:00 AM','2:30 PM']) option(`Friday · ${time}`,()=>{demo.slot=time;demo.phase='selected';renderDemo()});
+    } else if(demo.phase==='selected') {
+      add('SAMPLE CLIENT',`Friday at ${demo.slot}, please.`,true);
+      add(sms?'SMS ASSISTANT':'AI ASSISTANT',`${p.service} with ${p.staff} at ${demo.slot}. ${deposit && !reschedule?`This example requires a $${p.deposit} deposit. The appointment stays pending until that payment is recorded.`:reschedule?'Your sample paid deposit carries over; no new payment is requested.':'This example does not require a deposit.'}`);
+      option(reschedule?'Confirm example change':'Create example booking',()=>{demo.phase='complete';demo.booking=true;demo.paid=reschedule || !deposit;demo.view='bookings';renderDemo()},true);
+    } else {
+      add(sms?'SMS ASSISTANT':'AI ASSISTANT',reschedule?`Your sample appointment has moved to Friday at ${demo.slot}. A confirmation text would follow in a configured system.`:demo.paid?`Your example appointment is confirmed for Friday at ${demo.slot}. Your team can see the status and client details.`:`Your example appointment is held for Friday at ${demo.slot}. A deposit link would be sent; the team sees “Deposit pending.”`);
+      if(!demo.paid) option(`Simulate $${p.deposit} deposit paid`,()=>{demo.paid=true;renderDemo()},true);
+      option('View sample client record',()=>{demo.view='clients';renderTeam()});
     }
-
-    rafId = requestAnimationFrame(tick);
   }
+  renderTeam();
+}
+function renderTeam() {
+  const p=profiles[demo.profile];const panel=$('#demo-team');panel.replaceChildren();
+  document.querySelectorAll('.workspace-tab').forEach(b=>{const active=b.dataset.view===demo.view;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});
+  if(demo.view==='bookings') {
+    panel.append(record('Casey Taylor · sample client',`${p.service} · ${p.staff} · Friday, 9:30 AM`,'Confirmed'));
+    if(demo.booking) panel.append(record(`${p.client} · your example`,`${p.service} · ${p.staff} · Friday, ${demo.slot}`,demo.paid?(demo.scenario==='reschedule'?'Rescheduled':'Confirmed'):'Deposit pending',demo.paid?'':'pending'));
+    else {const empty=document.createElement('p');empty.className='workspace-empty';empty.textContent='Complete the sample booking to see its appointment and payment status here.';panel.append(empty)}
+  } else if(demo.view==='clients') {
+    panel.append(record(`${p.client} · sample client`,`${p.service} preference · Preferred provider: ${p.staff}`,'Client context'));
+    panel.append(record('Appointment history',demo.booking?`Latest example: Friday at ${demo.slot}. ${demo.paid?'Confirmed.':'Awaiting deposit.'}`:'One previous sample appointment. No new example booking yet.','Fictional record','blue'));
+    panel.append(record('Team note','Client prefers an afternoon appointment when possible.','Staff context'));
+  } else if(demo.callback) panel.append(record(`${p.client} · callback requested`,'Prefers after 3 PM · Wants to discuss a question with a person','Needs follow-up','pending'));
+  else {const empty=document.createElement('div');empty.className='workspace-empty';const strong=document.createElement('strong');strong.textContent='No sample callbacks yet.';empty.append(strong,document.createTextNode('Choose “Ask for a person” to see how a request reaches your team.'));panel.append(empty)}
+}
+document.querySelectorAll('.profile-tab').forEach(b=>b.addEventListener('click',()=>{demo.profile=b.dataset.profile;resetDemo()}));
+document.querySelectorAll('.scenario-tab').forEach(b=>b.addEventListener('click',()=>{demo.scenario=b.dataset.scenario;resetDemo()}));
+document.querySelectorAll('.workspace-tab').forEach(b=>b.addEventListener('click',()=>{demo.view=b.dataset.view;renderTeam()}));
+$('#demo-deposit').addEventListener('change',resetDemo);$('#reset-demo').addEventListener('click',resetDemo);renderDemo();
 
-  // Pause animation when hero is off-screen
-  const observer = new IntersectionObserver(entries => {
-    visible = entries[0].isIntersecting;
-    if (visible && !rafId) rafId = requestAnimationFrame(tick);
-  }, { threshold: 0 });
-  observer.observe(canvas);
+const calcIds=['calc-hours','calc-hour-value','calc-appointments','calc-contribution','calc-fee'];
+function calculateValue(){const values=calcIds.map(id=>{const el=$('#'+id);return el.value.trim()==='' || !el.validity.valid?NaN:Number(el.value)});if(values.some(v=>!Number.isFinite(v)||v<0)){$('#calc-result').textContent='Check inputs';$('#calc-breakdown').textContent='Use nonnegative numbers in every field.';return}const [hours,hourValue,appointments,contribution,fee]=values,format=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v);$('#calc-result').textContent=format(hours*hourValue+appointments*contribution-fee);$('#calc-breakdown').textContent=`${format(hours*hourValue)} time value + ${format(appointments*contribution)} appointment contribution − ${format(fee)} assumed fee.`}
+calcIds.forEach(id=>$('#'+id).addEventListener('input',calculateValue));calculateValue();
 
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { resize(); create(); }, 200);
-  }, { passive: true });
+const tourSlides=[
+  ['Your attention belongs with your clients.','Booking work often arrives at the least convenient moment: during a service, after closing, or while someone is handling another enquiry.',['Start with the calls and requests that take staff time.','Find the repetitive work your current tools leave behind.']],
+  ['Connect the conversation to the appointment.','An AI assistant can understand the request, answer approved questions and guide the client toward the right next step.',['Voice and two-way SMS.','Service, provider and schedule selection.','An approved booking, booking link or callback workflow.']],
+  ['Keep the follow-through in sync.','The workflow continues after the first conversation, so your client and your team know what happens next.',['Appointment details and approved deposit links.','Payment status and reminders.','Eligible changes handled under your policies.']],
+  ['Give your team one view of the work.','A custom workspace brings the context together, instead of making your staff chase several disconnected tools.',['Bookings, client profiles and staff notes.','Connected calendars and recurring schedules.','Callback requests and exceptions for human review.']],
+  ['Agree a useful, measurable starting point.','We review your existing tools, build one scoped workflow and test it with you before launch.',['Demonstrate the exact integration.','Agree setup costs, monthly fees and included usage.','Measure completed outcomes and admin time against a baseline.']],
+  ['Let’s map your business.','Tell us where booking gets busy. We’ll follow up about a walkthrough focused on that workflow.',['Send your enquiry through the site anytime.','Email contact@fabricioguardia.com.','Los Angeles visits can be arranged.']]
+];
+let tourIndex=0;
+function renderTour(){const [title,body,points]=tourSlides[tourIndex];$('#tour-count').textContent=`THE GUIDED TOUR / 0${tourIndex+1} OF 06`;$('#tour-title').textContent=title;$('#tour-body').textContent=body;$('#tour-points').replaceChildren(...points.map(t=>{const p=document.createElement('p');p.textContent=t;return p}));$('#tour-back').disabled=tourIndex===0;$('#tour-next').textContent=tourIndex===5?'Discuss my business ↗':'Next →'}
+$('#open-tour').addEventListener('click',()=>{tourIndex=0;renderTour();$('#tour-dialog').showModal()});$('#close-tour').addEventListener('click',()=>$('#tour-dialog').close());
+$('#tour-back').addEventListener('click',()=>{if(tourIndex>0){tourIndex--;renderTour()}});
+function nextTour(){if(tourIndex===5){$('#tour-dialog').close();$('#contact').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth'});$('#intake-form input').focus({preventScroll:true});return}tourIndex++;renderTour()}
+$('#tour-next').addEventListener('click',nextTour);$('#tour-dialog').addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();nextTour()}if(e.key==='ArrowLeft' && tourIndex>0){e.preventDefault();tourIndex--;renderTour()}});
 
-  resize(); create();
-  rafId = requestAnimationFrame(tick);
-})();
-
-/* Contribution illustration: completed incremental appointments, not speculative lost revenue. */
-(function initROI() {
-  const calls=document.getElementById('slider-calls'),booking=document.getElementById('slider-booking'),pct=document.getElementById('slider-pct'),fee=document.getElementById('roi-fee');
-  function update(){
-    const a=Number(calls.value),t=Number(booking.value),m=Number(pct.value),f=fee.value===''?NaN:Number(fee.value);
-    document.getElementById('val-calls').textContent=a;document.getElementById('val-booking').textContent=t;document.getElementById('val-pct').textContent=m;
-    if(!Number.isFinite(f)||f<0){document.getElementById('roi-lost').textContent='Enter a fee';document.getElementById('roi-detail').textContent='Enter a nonnegative monthly fee.';return}
-    const per=t*m/100;
-    document.getElementById('roi-lost').textContent=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(a*per-f);
-    document.getElementById('roi-detail').textContent=per>0 ? Math.ceil(f/per)+' additional completed appointments would cover the fee.' : f===0?'No monthly fee to cover.':'Positive contribution per appointment is needed to cover the fee.';
-  }
-  [calls,booking,pct,fee].forEach(el=>el.addEventListener('input',update));update();
-})();
-
-/* ── FAQ Accordion ────────────────────────────────────────── */
-document.querySelectorAll('.faq-q').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const item = btn.closest('.faq-item');
-    const ans  = item.querySelector('.faq-a');
-    const isOpen = item.classList.contains('open');
-
-    // Close all
-    document.querySelectorAll('.faq-item.open').forEach(el => {
-      el.classList.remove('open');
-      el.querySelector('.faq-a').classList.remove('open');
-      el.querySelector('.faq-q').setAttribute('aria-expanded','false');
-    });
-
-    if (!isOpen) {
-      item.classList.add('open');
-      ans.classList.add('open');
-      btn.setAttribute('aria-expanded','true');
-    }
-  });
+const form=$('#intake-form');let requestKey,payloadSignature;
+form.addEventListener('submit',async e=>{
+  e.preventDefault();if(!form.reportValidity())return;
+  if(form.elements.contactPreference.value==='Phone call' && !form.elements.phone.value.trim()) {$('#form-error').textContent='Add your phone number or choose an email reply.';$('#form-error').hidden=false;form.elements.phone.focus();return}
+  const data=Object.fromEntries(new FormData(form));
+  const params=new URLSearchParams(location.search),tags=['utm_source','utm_medium','utm_campaign'].map(k=>params.get(k)?`${k}=${params.get(k)}`:'').filter(Boolean).join(' ');
+  data.source=tags.slice(0,300) || 'Website';
+  const signature=JSON.stringify(data);if(signature!==payloadSignature){payloadSignature=signature;requestKey=crypto.randomUUID()}data.requestKey=requestKey;
+  const button=$('#submit-enquiry');button.disabled=true;button.textContent='Saving your enquiry…';$('#form-error').hidden=true;
+  try {
+    const response=await fetch('/api/intake',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(15000)});
+    const result=await response.json();if(!response.ok || result.ok!==true)throw new Error(result.error || 'Could not save your enquiry.');
+    $('#submission-reference').textContent=`Enquiry reference: ${result.id}`;form.hidden=true;$('#form-success').hidden=false;$('#form-success').focus();
+  } catch(error) {
+    $('#form-error').textContent=['TimeoutError','TypeError'].includes(error.name)?'We could not confirm receipt. Your details are still here. Try again, or email contact@fabricioguardia.com.':error.message;
+    $('#form-error').hidden=false;$('#form-error').focus();
+  } finally {button.disabled=false;button.textContent='Request a walkthrough ↗'}
 });
-
-/* ── Multi-step form ──────────────────────────────────────── */
-(function initForm() {
-  const form    = document.getElementById('intake-form');
-  if (!form) return;
-
-  const panels  = form.querySelectorAll('.form-panel');
-  const steps   = document.querySelectorAll('.form-step');
-  const success = document.getElementById('form-success');
-
-  function goToPanel(n) {
-    panels.forEach(p => p.classList.remove('active'));
-    const next = document.getElementById('panel-' + n);
-    if (next) next.classList.add('active');
-
-    steps.forEach((s, i) => {
-      s.classList.remove('active', 'done');
-      if (i + 1 < n)  s.classList.add('done');
-      if (i + 1 === n) s.classList.add('active');
-    });
-
-    // Update "done" bubbles to show checkmarks
-    steps.forEach((s, i) => {
-      const bubble = s.querySelector('.step-bubble');
-      if (i + 1 < n) bubble.textContent = '✓';
-      else bubble.textContent = i + 1;
-    });
-  }
-
-  // Next buttons
-  form.querySelectorAll('.btn-next').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const nextPanel = parseInt(btn.dataset.next, 10);
-      const currentPanel = document.getElementById('panel-' + btn.closest('.form-panel').id.split('-')[1]);
-
-      // Basic validation for step 1
-      if (nextPanel === 2) {
-        const name  = document.getElementById('f-name');
-        const salon = document.getElementById('f-salon');
-        const email = document.getElementById('f-email');
-        if (!name.value.trim() || !salon.value.trim() || !email.value.trim()) {
-          highlightEmpty([name, salon, email]);
-          return;
-        }
-        if (!isValidEmail(email.value)) {
-          email.style.borderColor = 'rgba(248,113,113,0.5)';
-          email.focus();
-          return;
-        }
-      }
-
-      // Validation for step 2
-      if (nextPanel === 3) {
-        const services = document.getElementById('f-services');
-        if (!services.value.trim()) {
-          services.style.borderColor = 'rgba(248,113,113,0.5)';
-          services.focus();
-          return;
-        }
-      }
-
-      goToPanel(nextPanel);
-      // Scroll the form into view
-      document.getElementById('intake-right') && document.getElementById('intake-right').scrollIntoView({ behavior:'smooth', block:'nearest' });
-    });
-  });
-
-  // Back buttons
-  form.querySelectorAll('.btn-back').forEach(btn => {
-    btn.addEventListener('click', () => {
-      goToPanel(parseInt(btn.dataset.back, 10));
-    });
-  });
-
-  // Submit
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const submitBtn  = form.querySelector('.btn-submit');
-    const submitText = form.querySelector('.submit-text');
-    const submitLoad = form.querySelector('.submit-loading');
-
-    submitBtn.disabled = true;
-    submitText.style.display = 'none';
-    submitLoad.style.display = 'inline';
-    const errorBox = document.getElementById('form-error');
-    errorBox.hidden = true;
-
-    // Gather data
-    const data = {
-      name:          document.getElementById('f-name')?.value || '',
-      salon:         document.getElementById('f-salon')?.value || '',
-      email:         document.getElementById('f-email')?.value || '',
-      phone:         document.getElementById('f-phone')?.value || '',
-      size:          document.getElementById('f-size')?.value || '',
-      calls:         document.getElementById('f-calls')?.value || '',
-      bookingSystem: document.getElementById('f-booking')?.value || '',
-      services:      document.getElementById('f-services')?.value || '',
-      painPoints:    [...form.querySelectorAll('input[name="pain"]:checked')].map(c => c.value).join(', '),
-      decision:      document.getElementById('f-decision')?.value || '',
-      submittedAt:   new Date().toISOString(),
-    };
-
-    try {
-      const endpoint = form.dataset.endpoint || '/api/intake';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        signal: AbortSignal.timeout(15000),
-      });
-      const result = await response.json();
-      if (!response.ok || result.ok !== true) throw new Error(result.error || 'We could not save your enquiry. Please try again.');
-      document.getElementById('submission-reference').textContent = 'Enquiry reference: ' + result.id;
-    } catch (err) {
-      errorBox.querySelector('.error-text').textContent = ['TimeoutError', 'TypeError'].includes(err.name)
-        ? 'We could not confirm that your enquiry was saved. Your details are still here; try again or message us on Instagram.'
-        : err.message || 'We could not save your enquiry. Please try again or contact us on Instagram.';
-      errorBox.hidden = false;
-      errorBox.focus();
-      submitBtn.disabled = false;
-      submitText.style.display = '';
-      submitLoad.style.display = 'none';
-      return;
-    }
-
-    // Show success
-    panels.forEach(p => p.classList.remove('active'));
-    document.querySelector('.form-steps').style.display = 'none';
-    success.style.display = 'block';
-    success.setAttribute('tabindex', '-1');
-    success.focus();
-  });
-
-  function highlightEmpty(fields) {
-    fields.forEach(f => {
-      if (!f.value.trim()) {
-        f.style.borderColor = 'rgba(248,113,113,0.5)';
-        f.addEventListener('input', () => f.style.borderColor = '', { once: true });
-      }
-    });
-    const first = fields.find(f => !f.value.trim());
-    if (first) first.focus();
-  }
-
-  function isValidEmail(v) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  }
-
-  // Reset border on input
-  form.querySelectorAll('input, select, textarea').forEach(el => {
-    el.addEventListener('input', () => { el.style.borderColor = ''; });
-  });
-})();
-
-/* Keep a usable contact path when durable storage has not been configured. */
-fetch('/api/public-config').then(r => {
-  if (!r.ok) throw new Error('Configuration unavailable');
-  return r.json();
-}).then(config => {
-  if (!config.intakeEnabled) {
-    document.getElementById('intake-unavailable').hidden = false;
-    document.getElementById('intake-form').hidden = true;
-    document.querySelector('.form-steps').hidden = true;
-  }
-}).catch(() => {});
-
-/* ── Demo transcript animation ────────────────────────────── */
-(function initDemo() {
-  const lines = [
-    { id: 'tr-client',  delay: 3000 },
-    { id: 'tr-ai2',     delay: 5500 },
-    { id: 'tr-client2', delay: 8000 },
-    { id: 'tr-ai3',     delay: 10500 },
-  ];
-
-  const observed = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        lines.forEach(({ id, delay }) => {
-          setTimeout(() => {
-            const el = document.getElementById(id);
-            if (el) {
-              el.style.transition = 'opacity 0.5s, transform 0.5s';
-              el.style.opacity = '1';
-              el.style.transform = 'translateY(0)';
-            }
-          }, delay);
-        });
-        observed.disconnect();
-      }
-    });
-  }, { threshold: 0.3 });
-
-  const demo = document.querySelector('.phone-shell');
-  if (demo) observed.observe(demo);
-})();
-
-/* ── Scroll reveal ────────────────────────────────────────── */
-(function initReveal() {
-  const targets = document.querySelectorAll(
-    '.feature-card, .step-item, .cost-card, .plan-card, .testi-card, .setup-col, .setup-timeline, .faq-item, .tl-step'
-  );
-
-  targets.forEach(el => el.classList.add('reveal'));
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry, i) => {
-      if (entry.isIntersecting) {
-        const delay = parseInt(entry.target.dataset.delay || '0', 10);
-        setTimeout(() => entry.target.classList.add('visible'), delay);
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
-  targets.forEach(el => observer.observe(el));
-})();
-
-/* ── Smooth anchor scroll (offset for fixed nav) ─────────── */
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', e => {
-    const href = a.getAttribute('href');
-    if (href === '#') return;
-    const target = document.querySelector(href);
-    if (target) {
-      e.preventDefault();
-      const offset = 80;
-      const top = target.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
-  });
-});
+fetch('/api/public-config').then(r=>{if(!r.ok)throw new Error('Unavailable');return r.json()}).then(config=>{if(!config.intakeEnabled){$('#intake-unavailable').hidden=false;form.hidden=true}}).catch(()=>{$('#intake-unavailable').hidden=false;form.hidden=true});
