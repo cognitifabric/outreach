@@ -1,233 +1,120 @@
 require('dotenv').config();
-const express  = require('express');
-const path     = require('path');
-const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
-
-const app  = express();
-const PORT = process.env.PORT || 3000;
-
-// ── Middleware ─────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname)));
-
-// ── Database ───────────────────────────────────────────────
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
-    ? { rejectUnauthorized: false }
-    : false,
-});
-
-async function initDb() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS intake_submissions (
-      id             SERIAL PRIMARY KEY,
-      name           TEXT NOT NULL,
-      salon          TEXT NOT NULL,
-      email          TEXT NOT NULL,
-      phone          TEXT,
-      size           TEXT,
-      calls          TEXT,
-      booking_system TEXT,
-      services       TEXT,
-      pain_points    TEXT,
-      decision       TEXT,
-      submitted_at   TIMESTAMPTZ DEFAULT NOW(),
-      ip             TEXT
-    );
-  `);
-  console.log('Database table ready.');
+const express=require('express');
+const path=require('path');
+const {randomUUID}=require('crypto');
+const {Pool}=require('pg');
+const {initDb}=require('./db');
+const {mountAuth}=require('./auth');
+const {validEmail,normalizeRecipients,createTransport,notificationMessage,createNotificationWorker}=require('./notifications');
+const INSTAGRAM='https://www.instagram.com/thesalonagent/';
+const FIELDS={name:120,salon:160,email:254,phone:40,size:40,calls:40,bookingSystem:120,services:2000,painPoints:500,decision:40,businessType:80,contactPreference:40,source:300};
+const STAGES=['New','Contacted','Demo booked','Proposal','Won','Not a fit'];
+function validateIntake(body) {
+  if(!body || typeof body!=='object' || Array.isArray(body)) return null;
+  const data={};
+  for(const [key,limit] of Object.entries(FIELDS)) {
+    const value=body[key] ?? '';
+    if(typeof value!=='string' || value.length>limit || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) return null;
+    data[key]=value.trim();
+  }
+  if(!data.name || !data.salon || !validEmail(data.email)) return null;
+  if(body.requestKey && (typeof body.requestKey!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestKey))) return null;
+  data.requestKey=body.requestKey || randomUUID();
+  return data;
 }
-
-// ── Email transport ────────────────────────────────────────
-function createTransport() {
-  // Resend SMTP (preferred)
-  if (process.env.RESEND_API_KEY) {
-    return nodemailer.createTransport({
-      host:   'smtp.resend.com',
-      port:   587,
-      secure: false,
-      auth: {
-        user: 'resend',
-        pass: process.env.RESEND_API_KEY,
-      },
-    });
-  }
-  // Generic SMTP fallback
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host:   process.env.SMTP_HOST,
-      port:   parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  // Fallback: no email configured
-  return null;
-}
-
-async function sendAdminEmail(data) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) {
-    console.log('ADMIN_EMAIL not set — skipping email notification.');
-    return;
-  }
-  const transport = createTransport();
-  if (!transport) {
-    console.log('SMTP not configured — skipping email notification.');
-    return;
-  }
-
-  const painMap = {
-    missed_calls: '📵 Missed calls losing bookings',
-    after_hours:  '🌙 No one to answer after hours',
-    no_shows:     '🚫 High no-show / no deposit rate',
-    interruptions:'📞 Calls interrupting services',
-    staff_cost:   '💸 Receptionist costs too much',
-    reschedules:  '🔄 Too many reschedules to manage',
-  };
-  const painLabels = (data.painPoints || '')
-    .split(',')
-    .map(p => painMap[p.trim()] || p.trim())
-    .filter(Boolean)
-    .join('\n  • ');
-
-  const fromName  = process.env.EMAIL_FROM_NAME  || 'The Salon Agent';
-  const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.SMTP_USER || 'noreply@auraandvibes.com';
-
-  await transport.sendMail({
-    from:    `"${fromName}" <${fromEmail}>`,
-    to:      adminEmail,
-    subject: `🎯 New Intake: ${data.salon} (${data.name})`,
-    text: [
-      '── NEW INTAKE SUBMISSION ──────────────────────',
-      '',
-      `Name:            ${data.name}`,
-      `Salon:           ${data.salon}`,
-      `Email:           ${data.email}`,
-      `Phone:           ${data.phone || '—'}`,
-      `Staff size:      ${data.size || '—'}`,
-      `Calls/week:      ${data.calls || '—'}`,
-      `Booking system:  ${data.bookingSystem || '—'}`,
-      `Decision maker:  ${data.decision || '—'}`,
-      '',
-      'Services offered:',
-      `  ${data.services || '—'}`,
-      '',
-      'Pain points:',
-      `  • ${painLabels || '—'}`,
-      '',
-      `Submitted:       ${data.submittedAt}`,
-      `IP:              ${data.ip || '—'}`,
-      '',
-      '───────────────────────────────────────────────',
-    ].join('\n'),
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-        <div style="background:#1a1a2e;padding:24px 32px">
-          <h2 style="color:#fff;margin:0;font-size:20px">🎯 New Intake Submission</h2>
-          <p style="color:#a78bfa;margin:6px 0 0">The Salon Agent</p>
-        </div>
-        <div style="padding:32px">
-          <table style="width:100%;border-collapse:collapse">
-            <tr><td style="padding:8px 0;color:#6b7280;width:140px">Name</td><td style="padding:8px 0;font-weight:600">${data.name}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Salon</td><td style="padding:8px 4px;font-weight:600">${data.salon}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Email</td><td style="padding:8px 0"><a href="mailto:${data.email}" style="color:#7c3aed">${data.email}</a></td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Phone</td><td style="padding:8px 4px">${data.phone || '—'}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Staff size</td><td style="padding:8px 0">${data.size || '—'}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Calls/week</td><td style="padding:8px 4px">${data.calls || '—'}</td></tr>
-            <tr><td style="padding:8px 0;color:#6b7280">Booking system</td><td style="padding:8px 0">${data.bookingSystem || '—'}</td></tr>
-            <tr style="background:#f9fafb"><td style="padding:8px 4px;color:#6b7280">Decision maker</td><td style="padding:8px 4px">${data.decision || '—'}</td></tr>
-          </table>
-          <div style="margin-top:24px;padding:16px;background:#f5f3ff;border-radius:8px;border-left:4px solid #7c3aed">
-            <p style="margin:0 0 8px;font-weight:600;color:#1a1a2e">Services offered</p>
-            <p style="margin:0;color:#374151">${(data.services || '—').replace(/\n/g, '<br>')}</p>
-          </div>
-          ${painLabels ? `<div style="margin-top:16px;padding:16px;background:#fdf4ff;border-radius:8px">
-            <p style="margin:0 0 8px;font-weight:600;color:#1a1a2e">Pain points</p>
-            <p style="margin:0;color:#374151">${painLabels.replace(/\n/g, '<br>')}</p>
-          </div>` : ''}
-          <p style="margin-top:24px;color:#9ca3af;font-size:13px">Submitted ${data.submittedAt} · IP ${data.ip || '—'}</p>
-        </div>
-      </div>
-    `,
+function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,setupToken=process.env.ADMIN_SETUP_TOKEN,secureCookies=true,logger=console}={}) {
+  const app=express();
+  app.disable('x-powered-by');app.set('trust proxy',1);app.use(express.json({limit:'16kb'}));
+  app.use((_req,res,next)=>{
+    res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','strict-origin-when-cross-origin');res.set('X-Frame-Options','DENY');
+    res.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    next();
   });
-  console.log(`Admin email sent to ${adminEmail}`);
+  for(const file of ['index.html','app.js','style.css','privacy.html','admin.html','admin.js']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
+  app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'index.html')));
+  app.get(['/admin','/admin/activate'],(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'admin.html')));
+  app.get('/health',(_req,res)=>res.json({ok:true}));
+  app.get('/api/public-config',(_req,res)=>res.json({intakeEnabled:Boolean(db),contactUrl:INSTAGRAM,contactEmail:'contact@fabricioguardia.com'}));
+  const attempts=new Map();
+  function rateLimit(req,res,next) {
+    const now=Date.now(),key=req.ip,active=attempts.get(key);
+    if(active && active.until>now && active.count>=20) {res.set('Retry-After',String(Math.ceil((active.until-now)/1000)));return res.status(429).json({ok:false,error:'Too many attempts. Please try again in a minute.'})}
+    if(attempts.size>=10000) for(const [ip,entry] of attempts) if(entry.until<=now) attempts.delete(ip);
+    if(!active && attempts.size>=10000) return res.status(429).json({ok:false,error:'Please try again later.'});
+    attempts.set(key,active && active.until>now ? {...active,count:active.count+1} : {count:1,until:now+60000});next();
+  }
+  const {requireAdmin,requireOwner}=mountAuth(app,{db,rateLimit,setupToken,secureCookies});
+  app.post('/api/intake',rateLimit,async(req,res)=>{
+    if(req.body?.companyFax) return res.status(400).json({ok:false,error:'Could not process this enquiry.'});
+    const data=validateIntake(req.body);
+    if(!data) return res.status(400).json({ok:false,error:'Check your name, business name and email, and keep responses within the field limits.'});
+    if(!db) return res.status(503).json({ok:false,error:'The form is temporarily unavailable. Email contact@fabricioguardia.com or message us on Instagram.',contactUrl:INSTAGRAM});
+    try {
+      // Save the lead and a separate notification for every configured recipient
+      // in one statement. A retry with the same request key returns the same lead.
+      const result=await db.query(`WITH saved AS (
+        INSERT INTO intake_submissions(name,salon,email,phone,size,calls,booking_system,services,pain_points,decision,submitted_at,request_key,business_type,contact_preference,source,notification_recipients)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,$12,$13,$14,(SELECT emails FROM notification_settings WHERE id=TRUE))
+        ON CONFLICT(request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING id,notification_recipients
+      ), queued AS (
+        INSERT INTO lead_notifications(lead_id,recipient)
+        SELECT saved.id,recipient FROM saved
+        CROSS JOIN LATERAL jsonb_array_elements_text(saved.notification_recipients) recipient
+        ON CONFLICT(lead_id,recipient) DO NOTHING RETURNING id
+      ) SELECT id FROM saved`,
+      [data.name,data.salon,data.email,data.phone||null,data.size||null,data.calls||null,data.bookingSystem||null,data.services||null,data.painPoints||null,data.decision||null,data.requestKey,data.businessType||null,data.contactPreference||'Email',data.source||null]);
+      const id=result.rows[0].id;res.status(201).json({ok:true,id,message:'Your enquiry has been saved.'});
+      Promise.resolve().then(onLeadSaved).catch(()=>logger.error(`Queue wake failed for saved enquiry ${id}; pending alerts remain saved.`));
+    } catch {
+      logger.error('Intake storage failed; enquiry was not acknowledged.');
+      res.status(503).json({ok:false,error:'We could not save your enquiry. Your details are still here; try again or email contact@fabricioguardia.com.',contactUrl:INSTAGRAM});
+    }
+  });
+  app.get('/api/submissions',requireAdmin,async(_req,res)=>{
+    try {
+      const result=await db.query(`SELECT s.*,COALESCE((SELECT json_agg(json_build_object('recipient',n.recipient,'status',n.status,'attempts',n.attempts,'sentAt',n.sent_at)) FROM lead_notifications n WHERE n.lead_id=s.id),'[]'::json) AS notifications
+        FROM intake_submissions s ORDER BY submitted_at DESC LIMIT 200`);
+      res.json({count:result.rowCount,submissions:result.rows,notificationsConfigured});
+    } catch {res.status(503).json({error:'Lead storage is temporarily unavailable.'})}
+  });
+  app.patch('/api/submissions/:id',requireAdmin,async(req,res)=>{
+    const {stage,assignedTo,notes,version}=req.body || {};
+    if(!/^\d+$/.test(req.params.id) || !STAGES.includes(stage) || typeof assignedTo!=='string' || assignedTo.length>120 || typeof notes!=='string' || notes.length>4000 || !Number.isInteger(version) || version<1) return res.status(400).json({error:'Check the lead stage, owner and notes.'});
+    try {
+      const result=await db.query('UPDATE intake_submissions SET stage=$2,assigned_to=$3,notes=$4,version=version+1 WHERE id=$1 AND version=$5 RETURNING id,stage,assigned_to,notes,version',[req.params.id,stage,assignedTo.trim(),notes.trim(),version]);
+      if(!result.rows.length) return res.status(409).json({error:'This lead changed or is no longer available. Reload before updating it.'});
+      res.json({ok:true,lead:result.rows[0]});
+    } catch {res.status(503).json({error:'Could not save changes. Your edits are still here.'})}
+  });
+  app.get('/api/admin/notifications',requireAdmin,requireOwner,async(_req,res)=>{
+    try {const r=await db.query('SELECT emails,version FROM notification_settings WHERE id=TRUE');res.json({...r.rows[0],deliveryConfigured:notificationsConfigured})}
+    catch {res.status(503).json({error:'Could not load notification settings.'})}
+  });
+  app.put('/api/admin/notifications',requireAdmin,requireOwner,async(req,res)=>{
+    const emails=normalizeRecipients(req.body?.emails),version=req.body?.version;
+    if(!emails || !Number.isInteger(version)) return res.status(400).json({error:'Add 1–10 valid email addresses.'});
+    try {
+      const r=await db.query('UPDATE notification_settings SET emails=$1::jsonb,version=version+1,updated_at=NOW() WHERE id=TRUE AND version=$2 RETURNING emails,version',[JSON.stringify(emails),version]);
+      if(!r.rows[0]) return res.status(409).json({error:'Settings changed. Reload before saving.'});
+      res.json({ok:true,...r.rows[0]});
+    } catch {res.status(503).json({error:'Could not save recipients. Your changes are still here.'})}
+  });
+  app.use((err,_req,res,_next)=>res.status(err.type==='entity.too.large'?413:err instanceof SyntaxError?400:500).json({ok:false,error:'Could not process this request.'}));
+  app.use((_req,res)=>res.status(404).send('Not found'));return app;
 }
-
-// ── POST /api/intake ───────────────────────────────────────
-app.post('/api/intake', async (req, res) => {
-  const {
-    name, salon, email, phone,
-    size, calls, bookingSystem, services,
-    painPoints, decision, submittedAt,
-  } = req.body;
-
-  // Basic validation
-  if (!name || !salon || !email) {
-    return res.status(400).json({ ok: false, error: 'Missing required fields.' });
-  }
-
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-
-  const data = { name, salon, email, phone, size, calls, bookingSystem, services, painPoints, decision, submittedAt, ip };
-
-  // Send admin email immediately — do NOT wait for DB
-  sendAdminEmail(data).catch(err => console.error('Email error:', err.message));
-
-  // Save to DB (best-effort — don't fail the response if DB is down)
-  if (process.env.DATABASE_URL) {
-    pool.query(
-      `INSERT INTO intake_submissions
-        (name, salon, email, phone, size, calls, booking_system, services, pain_points, decision, submitted_at, ip)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      [name, salon, email, phone || null, size || null, calls || null,
-       bookingSystem || null, services || null, painPoints || null,
-       decision || null, submittedAt || new Date().toISOString(), ip]
-    ).catch(err => console.error('DB error (non-fatal):', err.message));
-  }
-
-  return res.json({ ok: true, message: 'Submission received.' });
-});
-
-// ── GET /api/submissions (simple auth-guarded admin view) ──
-app.get('/api/submissions', async (req, res) => {
-  const token = req.headers['x-admin-token'] || req.query.token;
-  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  try {
-    const result = await pool.query('SELECT * FROM intake_submissions ORDER BY submitted_at DESC LIMIT 200');
-    res.json({ count: result.rowCount, submissions: result.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── Health check ───────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ ok: true }));
-
-// ── Catch-all: serve index.html ────────────────────────────
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// ── Start ──────────────────────────────────────────────────
 async function start() {
-  if (process.env.DATABASE_URL) {
-    await initDb().catch(err => {
-      console.error('DB init failed:', err.message);
-      process.exit(1);
-    });
-  } else {
-    console.warn('WARNING: DATABASE_URL not set. Submissions will not be persisted.');
-  }
-  app.listen(PORT, () => console.log(`The Salon Agent running on port ${PORT}`));
+  const schema=process.env.DATABASE_SCHEMA || 'public';
+  if(!/^[a-z][a-z0-9_]{0,62}$/.test(schema)) throw new Error('Invalid database schema');
+  const db=process.env.DATABASE_URL ? new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:5000,query_timeout:8000,options:`-c search_path=${schema}`,ssl:process.env.DATABASE_SSL==='true'?{rejectUnauthorized:true}:undefined}) : null;
+  if(db) {await db.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);await initDb(db)}else console.warn('Lead storage unavailable; direct contact fallback enabled.');
+  const transport=createTransport(),notificationsConfigured=Boolean(transport && validEmail(process.env.EMAIL_FROM_EMAIL || ''));
+  if(!notificationsConfigured) console.warn('Configure a verified email sender before launch. Alerts remain queued.');
+  const drain=createNotificationWorker({db,send:notificationsConfigured?(lead,recipient)=>transport.sendMail(notificationMessage(lead,recipient)):null});
+  const app=createApp({db,notificationsConfigured,onLeadSaved:drain});
+  const server=app.listen(process.env.PORT || 3000,()=>console.log('The Salon Agent is running.'));
+  const interval=setInterval(drain,15000);interval.unref();await drain();
+  const shutdown=()=>{clearInterval(interval);server.close(async()=>{if(transport)transport.close();if(db)await db.end();process.exit(0)})};
+  process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
 }
-
-start();
+if(require.main===module) start().catch(()=>{console.error('Startup failed; check configuration.');process.exitCode=1});
+module.exports={createApp,validateIntake,initDb,start};
