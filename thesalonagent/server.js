@@ -115,5 +115,9 @@ async function start() {
   const shutdown=()=>{clearInterval(interval);server.close(async()=>{if(transport)transport.close();if(db)await db.end();process.exit(0)})};
   process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
 }
-if(require.main===module) start().catch(()=>{console.error('Startup failed; check configuration.');process.exitCode=1});
+if(require.main===module) start().catch(err=>{
+  // Report only bounded error identifiers; driver messages can contain secrets.
+  const code=typeof err.code==='string' && /^[A-Z0-9_]{1,64}$/.test(err.code)?err.code:'NO_ERROR_CODE';
+  console.error(`Startup failed (${code}); check database configuration.`);process.exitCode=1;
+});
 module.exports={createApp,validateIntake,initDb,start};
