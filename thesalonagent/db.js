@@ -30,7 +30,9 @@ async function initDb(db) {
     ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'New',
     ADD COLUMN IF NOT EXISTS assigned_to TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '',
-    ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1`);
+    ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS deleted_by UUID`);
   await db.query('CREATE UNIQUE INDEX IF NOT EXISTS intake_request_key_idx ON intake_submissions(request_key)');
   await db.query(`CREATE TABLE IF NOT EXISTS notification_settings (
     id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK(id),emails JSONB NOT NULL,

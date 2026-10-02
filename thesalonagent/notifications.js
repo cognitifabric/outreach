@@ -26,20 +26,21 @@ function createNotificationWorker({db,send,logger=console}) {
     try {
       for(let count=0;count<20;count++) {
         const claim=await db.query(`WITH candidate AS (
-          SELECT id FROM lead_notifications WHERE status IN ('pending','sending') AND next_attempt<=NOW()
-          ORDER BY next_attempt,id FOR UPDATE SKIP LOCKED LIMIT 1
+          SELECT n.id FROM lead_notifications n JOIN intake_submissions s ON s.id=n.lead_id
+          WHERE n.status IN ('pending','sending') AND n.next_attempt<=NOW() AND s.deleted_at IS NULL
+          ORDER BY n.next_attempt,n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
         ) UPDATE lead_notifications n SET status='sending',attempts=n.attempts+1,next_attempt=NOW()+INTERVAL '5 minutes'
           FROM candidate WHERE n.id=candidate.id RETURNING n.*`);
         if(!claim.rows.length) break;
         const item=claim.rows[0];
         try {
-          const lead=await db.query('SELECT * FROM intake_submissions WHERE id=$1',[item.lead_id]);
-          if(!lead.rows[0]) throw new Error('Lead unavailable');
+          const lead=await db.query('SELECT * FROM intake_submissions WHERE id=$1 AND deleted_at IS NULL',[item.lead_id]);
+          if(!lead.rows[0]) {await db.query("UPDATE lead_notifications SET status='cancelled' WHERE id=$1 AND status='sending'",[item.id]);continue;}
           await send(lead.rows[0],item.recipient);
-          await db.query("UPDATE lead_notifications SET status='sent',sent_at=NOW() WHERE id=$1",[item.id]);
+          await db.query("UPDATE lead_notifications SET status='sent',sent_at=NOW() WHERE id=$1 AND status='sending'",[item.id]);
         } catch {
           const delay=Math.min(3600,30*2**Math.min(item.attempts,7));
-          await db.query("UPDATE lead_notifications SET status='pending',next_attempt=NOW()+($2*INTERVAL '1 second') WHERE id=$1",[item.id,delay]);
+          await db.query("UPDATE lead_notifications SET status='pending',next_attempt=NOW()+($2*INTERVAL '1 second') WHERE id=$1 AND status='sending'",[item.id,delay]);
           logger.error(`Notification ${item.id} for lead ${item.lead_id} will retry; lead remains saved.`);
         }
       }

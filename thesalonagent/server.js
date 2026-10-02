@@ -55,11 +55,12 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
       const result=await db.query(`WITH saved AS (
         INSERT INTO intake_submissions(name,salon,email,phone,size,calls,booking_system,services,pain_points,decision,submitted_at,request_key,business_type,contact_preference,source,notification_recipients)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,$12,$13,$14,(SELECT emails FROM notification_settings WHERE id=TRUE))
-        ON CONFLICT(request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING id,notification_recipients
+        ON CONFLICT(request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING id,notification_recipients,deleted_at
       ), queued AS (
         INSERT INTO lead_notifications(lead_id,recipient)
         SELECT saved.id,recipient FROM saved
         CROSS JOIN LATERAL jsonb_array_elements_text(saved.notification_recipients) recipient
+        WHERE saved.deleted_at IS NULL
         ON CONFLICT(lead_id,recipient) DO NOTHING RETURNING id
       ) SELECT id FROM saved`,
       [data.name,data.salon,data.email,data.phone||null,data.size||null,data.calls||null,data.bookingSystem||null,data.services||null,data.painPoints||null,data.decision||null,data.requestKey,data.businessType||null,data.contactPreference||'Email',data.source||null]);
@@ -70,10 +71,12 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
       res.status(503).json({ok:false,error:'We could not save your enquiry. Your details are still here; try again or email contact@fabricioguardia.com.',contactUrl:INSTAGRAM});
     }
   });
-  app.get('/api/submissions',requireAdmin,async(_req,res)=>{
+  app.get('/api/submissions',requireAdmin,async(req,res)=>{
+    if(req.query.view!==undefined && !['active','trash'].includes(req.query.view)) return res.status(400).json({error:'Choose active enquiries or Trash.'});
+    const trash=req.query.view==='trash';
     try {
       const result=await db.query(`SELECT s.*,COALESCE((SELECT json_agg(json_build_object('recipient',n.recipient,'status',n.status,'attempts',n.attempts,'sentAt',n.sent_at)) FROM lead_notifications n WHERE n.lead_id=s.id),'[]'::json) AS notifications
-        FROM intake_submissions s ORDER BY submitted_at DESC LIMIT 200`);
+        FROM intake_submissions s WHERE s.deleted_at IS ${trash?'NOT ':''}NULL ORDER BY ${trash?'deleted_at':'submitted_at'} DESC,s.id DESC LIMIT 200`);
       res.json({count:result.rowCount,submissions:result.rows,notificationsConfigured});
     } catch {res.status(503).json({error:'Lead storage is temporarily unavailable.'})}
   });
@@ -81,10 +84,35 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
     const {stage,assignedTo,notes,version}=req.body || {};
     if(!/^\d+$/.test(req.params.id) || !STAGES.includes(stage) || typeof assignedTo!=='string' || assignedTo.length>120 || typeof notes!=='string' || notes.length>4000 || !Number.isInteger(version) || version<1) return res.status(400).json({error:'Check the lead stage, owner and notes.'});
     try {
-      const result=await db.query('UPDATE intake_submissions SET stage=$2,assigned_to=$3,notes=$4,version=version+1 WHERE id=$1 AND version=$5 RETURNING id,stage,assigned_to,notes,version',[req.params.id,stage,assignedTo.trim(),notes.trim(),version]);
+      const result=await db.query('UPDATE intake_submissions SET stage=$2,assigned_to=$3,notes=$4,version=version+1 WHERE id=$1 AND version=$5 AND deleted_at IS NULL RETURNING id,stage,assigned_to,notes,version',[req.params.id,stage,assignedTo.trim(),notes.trim(),version]);
       if(!result.rows.length) return res.status(409).json({error:'This lead changed or is no longer available. Reload before updating it.'});
       res.json({ok:true,lead:result.rows[0]});
     } catch {res.status(503).json({error:'Could not save changes. Your edits are still here.'})}
+  });
+  app.delete('/api/submissions/:id',requireAdmin,async(req,res)=>{
+    const version=req.body?.version;
+    if(!/^\d+$/.test(req.params.id) || !Number.isInteger(version) || version<1) return res.status(400).json({error:'Choose a saved submission to delete.'});
+    try {
+      const result=await db.query(`WITH removed AS (
+        UPDATE intake_submissions SET deleted_at=NOW(),deleted_by=$3,version=version+1
+        WHERE id=$1 AND version=$2 AND deleted_at IS NULL RETURNING id,version,deleted_at
+      ), cancelled AS (
+        UPDATE lead_notifications SET status='cancelled' WHERE lead_id IN (SELECT id FROM removed)
+        AND status IN ('pending','sending') RETURNING id
+      ) SELECT * FROM removed`,[req.params.id,version,req.admin.id]);
+      if(!result.rows.length) return res.status(409).json({error:'This submission changed or is already in Trash. Refresh before deleting it.'});
+      res.json({ok:true,lead:result.rows[0]});
+    } catch {res.status(503).json({error:'Could not move the submission to Trash. Please try again.'})}
+  });
+  app.post('/api/submissions/:id/restore',requireAdmin,async(req,res)=>{
+    const version=req.body?.version;
+    if(!/^\d+$/.test(req.params.id) || !Number.isInteger(version) || version<1) return res.status(400).json({error:'Choose a submission in Trash to restore.'});
+    try {
+      const result=await db.query(`UPDATE intake_submissions SET deleted_at=NULL,deleted_by=NULL,version=version+1
+        WHERE id=$1 AND version=$2 AND deleted_at IS NOT NULL RETURNING id,version`,[req.params.id,version]);
+      if(!result.rows.length) return res.status(409).json({error:'This submission changed or was already restored. Refresh before restoring it.'});
+      res.json({ok:true,lead:result.rows[0]});
+    } catch {res.status(503).json({error:'Could not restore the submission. Please try again.'})}
   });
   app.get('/api/admin/notifications',requireAdmin,requireOwner,async(_req,res)=>{
     try {const r=await db.query('SELECT emails,version FROM notification_settings WHERE id=TRUE');res.json({...r.rows[0],deliveryConfigured:notificationsConfigured})}

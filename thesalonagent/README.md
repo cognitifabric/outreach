@@ -36,7 +36,9 @@ The server connects directly to PostgreSQL. No Supabase API key is needed in bro
 
 The owner creates a seven-day, single-use invitation from **Team access** and shares the link privately with the intended partner. The partner chooses their own password. Admins can read and update enquiries; the owner alone controls recipients and account access. Disabling an admin invalidates their sessions. The owner cannot disable themselves through the UI.
 
-Track a lead from New → Contacted → Demo booked → Proposal → Won or Not a fit. Assign a follow-up owner before replying. “Won” is an internal stage, not payment verification. The dashboard shows the newest 200 enquiries. Versions protect simultaneous edits from silently overwriting each other.
+Track a lead from New → Contacted → Demo booked → Proposal → Won or Not a fit. Assign a follow-up owner before replying. “Won” is an internal stage, not payment verification. The dashboard shows the newest 200 active enquiries. Versions protect simultaneous edits from silently overwriting each other.
+
+Each submission has an **Actions** dropdown. **Assign to me** fills the follow-up owner; use **Save changes** to commit it. **Delete submission** opens a confirmation and moves the submission to **Trash**, where **Actions → Restore submission** returns it with its original stage, notes and assignment. Both owners and admins can delete and restore. Trash retains the deletion timestamp and acting admin ID while deleted; there is no permanent-delete endpoint. Trashed submissions are excluded from the active inbox and opportunity metrics. Pending notifications are cancelled atomically with deletion; sent or already in-flight mail cannot be recalled. Restoring does not resend cancelled alerts. Retrying the original public submission does not restore a deleted lead.
 
 Passwords use salted scrypt hashes. Server-side sessions use hashed random tokens, HttpOnly/Secure/SameSite=Strict cookies and an eight-hour expiry. Mutations require a CSRF token. Shared `ADMIN_TOKEN` authentication is no longer supported. Password reset is not included; deployment recovery should be handled privately by the operator.
 
@@ -50,7 +52,7 @@ A receipt is returned only after the enquiry and notification queue are saved at
 TEST_DATABASE_URL=postgresql://user@127.0.0.1:5432/postgres npm test
 ```
 
-The integration test creates and drops its own random schema; it exercises real PostgreSQL, owner/admin permissions, CSRF, invitation reuse, session revocation, concurrent edits, recipient snapshots and persisted notification retry. It uses fictional identities and a fake mail sender. No real email or payment is sent.
+The integration test creates and drops its own random schema; it exercises real PostgreSQL, owner/admin permissions, CSRF, invitation reuse, session revocation, concurrent edits, recoverable deletion/restoration, cancellation of queued alerts, recipient snapshots and persisted notification retry. It uses fictional identities and a fake mail sender. No real email or payment is sent.
 
 `test/preview.js` runs local visual QA on loopback port 4319 using a temporary PostgreSQL schema. It seeds a fictional account, intentionally fails the first form save, and never sends mail. Run only with `TEST_DATABASE_URL` pointed at a disposable database. The QA login is `qa-owner@example.invalid` / `fictional-owner-password`; these credentials never initialize production.
 
