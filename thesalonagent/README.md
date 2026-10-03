@@ -57,3 +57,15 @@ The integration test creates and drops its own random schema; it exercises real 
 `test/preview.js` runs local visual QA on loopback port 4319 using a temporary PostgreSQL schema. It seeds a fictional account, intentionally fails the first form save, and never sends mail. Run only with `TEST_DATABASE_URL` pointed at a disposable database. The QA login is `qa-owner@example.invalid` / `fictional-owner-password`; these credentials never initialize production.
 
 Rate limiting is per process (20 attempts/minute/IP); use a shared limiter before scaling replicas. Public static assets use an explicit allowlist. The booking demo is visibly fictional and makes no external calls, reservations, SMS sends or charges. Capabilities were traced to the reference lash-studio code; each prospect's platform, rules and integration must be verified before quotation. No client result metrics or testimonials are invented.
+
+## Marketing preview — October 3, 2026
+
+The new beauty-first homepage includes a lazy-loaded Three.js booking illustration, silent captioned WebM-first video with a baseline H.264 fallback, and the existing inquiry form. Raw uploads and the old computer-voice samples are not published. A scripted introduction was recorded through a transient, tool-free Vapi session using the deployed Mia voice settings (ElevenLabs Jessica / eleven_flash_v2_5). It is labelled as a voice preview and cannot create bookings, SMS or payments. Admin and privacy pages retain their original styling in `workspace.css`. Inquiry, authentication and notification APIs are unchanged.
+
+Run `npm ci` and `npm run build` before starting the server. The build produces the self-hosted `workflow-3d.js` and its license notice from `marketing/workflow-3d.js`. Generated files are included for the local preview. Railway's Node build runs the build script; deployment is triggered by pushing this revision to GitHub main.
+
+For an isolated preview, use `PREVIEW_PORT=4332 TEST_DATABASE_URL=... node test/preview.js`. That creates a disposable schema and sends no email. The first save deliberately fails, allowing retry verification. End the process normally to remove the disposable schema.
+
+The published video walkthrough is fictional and silent; the separate voice player features the scripted Vapi introduction. For a full booking recording: use fictional customer details, confirm that no real booking, SMS or charge is triggered, remove credentials/customer records from the picture, and add captions/transcript. Do not publish historical client recordings without checking permission and content.
+
+Verified: ten tests passed with a disposable PostgreSQL schema, HTTP byte-range video seeking, private-file exclusions, full 40-second WebM playback in the in-app browser at desktop and 390px widths, local form failure/retry/save, and the test lead in the team dashboard. Chrome automation timed out, so Chrome and physical-device playback remain unverified.

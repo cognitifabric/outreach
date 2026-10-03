@@ -1,0 +1,46 @@
+{
+  "narrator": [
+    {
+      "speaker": "narrator",
+      "text": "When your team is with a client, the next booking can still start with a conversation.",
+      "start": 0,
+      "end": 4.518166666666667
+    },
+    {
+      "speaker": "narrator",
+      "text": "An AI assistant gathers the service request and customer details, then checks the configured schedule.",
+      "start": 4.898166666666667,
+      "end": 10.734666666666666
+    },
+    {
+      "speaker": "narrator",
+      "text": "The booking workflow can create the appointment on the staff and master Google calendars.",
+      "start": 11.114666666666666,
+      "end": 15.526916666666667
+    },
+    {
+      "speaker": "narrator",
+      "text": "SMS delivers the appointment details and the next step, such as a deposit link. A pending deposit is tracked separately from payment.",
+      "start": 15.906916666666667,
+      "end": 23.670625
+    },
+    {
+      "speaker": "narrator",
+      "text": "Your team sees the service, assigned staff member, appointment time, source and deposit status in one dashboard.",
+      "start": 24.050625000000004,
+      "end": 30.904583333333335
+    },
+    {
+      "speaker": "narrator",
+      "text": "Requests that need a person can move to a human assistance or callback workflow.",
+      "start": 31.284583333333337,
+      "end": 35.62241666666667
+    },
+    {
+      "speaker": "narrator",
+      "text": "This is a fictional walkthrough. Let's map the workflow for your business.",
+      "start": 36.00241666666667,
+      "end": 39.8205
+    }
+  ]
+}

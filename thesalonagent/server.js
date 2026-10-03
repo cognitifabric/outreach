@@ -27,10 +27,11 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
   app.disable('x-powered-by');app.set('trust proxy',1);app.use(express.json({limit:'16kb'}));
   app.use((_req,res,next)=>{
     res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','strict-origin-when-cross-origin');res.set('X-Frame-Options','DENY');
-    res.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    res.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; media-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     next();
   });
-  for(const file of ['index.html','app.js','style.css','privacy.html','admin.html','admin.js']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
+  for(const file of ['index.html','app.js','style.css','privacy.html','admin.html','admin.js','workspace.css','workflow-3d.js','workflow-3d.js.LEGAL.txt']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
+  app.use('/media',express.static(path.join(__dirname,'media'),{dotfiles:'deny',index:false,redirect:false}));
   app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'index.html')));
   app.get(['/admin','/admin/activate'],(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'admin.html')));
   app.get('/health',(_req,res)=>res.json({ok:true}));
