@@ -1,6 +1,6 @@
 # The Salon Agent: outreach site and shared lead dashboard
 
-The public site explains voice, SMS and booking workflows through an interactive 3D illustration, a simulated booking experience, an editable value calculator and a six-slide guided pitch. The contact form saves enquiries in PostgreSQL. `/admin` provides individual team accounts, lead stages, assignments, notes, delivery status, partner notification recipients and invitations.
+The public site presents a managed 24/7 AI front desk for busy salons, starting at $699/month. It leads with the customer booking journey, followed by outcome benefits, an interactive 3D illustration, staff-specific pricing, calendar and deposit examples, scoped pricing and FAQs. The contact form saves enquiries in PostgreSQL. `/admin` provides individual team accounts, lead stages, assignments, notes, delivery status, partner notification recipients and invitations.
 
 ## Run
 
@@ -68,4 +68,10 @@ For an isolated preview, use `PREVIEW_PORT=4332 TEST_DATABASE_URL=... node test/
 
 The published video walkthrough is fictional and silent; the separate voice player features the scripted Vapi introduction. For a full booking recording: use fictional customer details, confirm that no real booking, SMS or charge is triggered, remove credentials/customer records from the picture, and add captions/transcript. Do not publish historical client recordings without checking permission and content.
 
-Verified: ten tests passed with a disposable PostgreSQL schema, HTTP byte-range video seeking, private-file exclusions, full 40-second WebM playback in the in-app browser at desktop and 390px widths, local form failure/retry/save, and the test lead in the team dashboard. Chrome automation timed out, so Chrome and physical-device playback remain unverified.
+## Salon-focused monthly offer — October 6, 2026
+
+The hero keeps the owner-freedom headline and describes call, text and online booking, staff availability, service prices, appointment changes and deposit follow-up. The walkthrough follows the hero; call capacity appears later as a separately scoped configuration. The single-location managed service starts at $699/month, with usage, integrations, setup, ongoing management, additional capacity and third-party costs defined in the proposal. This is a sales inquiry flow; subscription checkout is not enabled.
+
+The interactive example uses fictional Alex Rivera, Jordan and Demo Studio, with a $120 service and a $40 pending deposit. Saving an appointment and receiving a deposit link do not demonstrate completed payment. A complete real-agent booking recording remains to be supplied and reviewed; the published voice preview is still explicitly a scripted introduction. The reference booking application's deposit-confirmation wording should be aligned before any deposit-first confirmation promise is used.
+
+Prior preview verification (October 3): ten tests passed with a disposable PostgreSQL schema, HTTP byte-range video seeking, private-file exclusions, full 40-second WebM playback in the in-app browser at desktop and 390px widths, local form failure/retry/save, and the test lead in the team dashboard. Chrome automation timed out, so Chrome and physical-device playback remain unverified.
