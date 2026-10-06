@@ -50,6 +50,6 @@ form.addEventListener('submit',async e=>{
   } catch(error) {
     $('#form-error').textContent=['TimeoutError','TypeError'].includes(error.name)?'We could not confirm receipt. Your details are still here. Try again, or email contact@fabricioguardia.com.':error.message;
     $('#form-error').hidden=false;$('#form-error').focus();
-  } finally {button.disabled=false;button.textContent='Request a walkthrough ↗'}
+  } finally {button.disabled=false;button.textContent='Show me my AI front desk ↗'}
 });
 fetch('/api/public-config').then(r=>{if(!r.ok)throw new Error('Unavailable');return r.json()}).then(config=>{if(!config.intakeEnabled){$('#intake-unavailable').hidden=false;form.hidden=true}}).catch(()=>{$('#intake-unavailable').hidden=false;form.hidden=true});
