@@ -1,9 +1,9 @@
 const steps=[
-{tag:'01 / CUSTOMER CALLS',title:'“Can I book with Jordan?”',body:'A booking request starts while your team is with a client.',type:'voice'},
-{tag:'02 / AVAILABILITY CHECKED',title:'The right stylist. A time that fits.',body:'Staff hours, breaks and connected calendars guide the options.',type:'availability'},
-{tag:'03 / APPOINTMENT IN THE CALENDAR',title:'Your team can see the appointment.',body:'A saved appointment and a paid deposit are separate statuses.',type:'calendar'},
-{tag:'04 / CUSTOMER RECEIVES A TEXT',title:'The details. The next step.',body:'A deposit link gives the customer a way to pay through your provider.',type:'sms'},
-{tag:'05 / TEAM SEES THE STATUS',title:'Know what still needs attention.',body:'Your team sees the booking and the pending deposit in one view.',type:'team'}
+{tag:'01 / CUSTOMER CALLS',title:'“Can I book with Jordan?”',body:'The customer requests a service and a preferred employee.',type:'voice'},
+{tag:'02 / AVAILABILITY CHECKED',title:'The right employee. A time that fits.',body:'Hours, breaks, prices and connected calendars guide the options.',type:'availability'},
+{tag:'03 / APPOINTMENT IN THE CALENDAR',title:'Your team can see the appointment.',body:'The appointment is saved. The deposit remains pending.',type:'calendar'},
+{tag:'04 / CUSTOMER RECEIVES A TEXT',title:'The details. The next step.',body:'The customer receives appointment details and a deposit request.',type:'sms'},
+{tag:'05 / TEAM SEES THE STATUS',title:'Know what still needs attention.',body:'The team sees the appointment and deposit status in one view.',type:'team'}
 ];
 let currentStep=0;
 const scene=document.querySelector('#product-scene');
@@ -19,15 +19,15 @@ function renderStep(index){
   const next=document.querySelector('#next-step');next.textContent=index===steps.length-1?'Replay ↻':'Next →';next.setAttribute('aria-label',index===steps.length-1?'Replay booking walkthrough':'Show next booking step');
   scene.replaceChildren();
   if(item.type==='voice'){scene.append(bubble('ALEX · DEMO CUSTOMER',"I'd like a lash set with Jordan on Tuesday.",true),bubble('MIA · AI RECEPTIONIST','Let’s check Jordan’s price and available times.'));}
-  if(item.type==='availability'){scene.append(row('Stylist / service','Jordan · Classic full set'),row('Service price','$120'),row('Staff schedule','Hours & breaks checked'));const slots=element('div','','availability-slots');slots.append(element('span','2:00 PM'),element('span','4:00 PM'));scene.append(slots,element('p','Illustrative available times · fictional schedule','scene-status'));}
-  if(item.type==='calendar'){const slot=element('div','','calendar-slot');slot.append(element('strong','Tue Oct 13 · 2:00–3:30 PM'),element('p','Alex Rivera · Classic full set'),element('p','Jordan · Demo Studio'));scene.append(slot,element('span','$40 deposit pending','pending-status'),element('p','Illustrative connected calendar · fictional appointment','scene-status'));}
+  if(item.type==='availability'){scene.append(row('Employee / service','Jordan · Classic full set'),row('Service price','$120'),row('Staff schedule','Hours & breaks checked'));const slots=element('div','','availability-slots');slots.append(element('span','2:00 PM'),element('span','4:00 PM'));scene.append(slots,element('p','Illustrative available times · fictional schedule','scene-status'));}
+  if(item.type==='calendar'){const slot=element('div','','calendar-slot');slot.append(element('strong','Tue Oct 13 · 2:00 to 3:30 PM'),element('p','Alex Rivera · Classic full set'),element('p','Jordan · Demo Studio'));scene.append(slot,element('span','$40 deposit pending','pending-status'),element('p','Illustrative connected calendar · fictional appointment','scene-status'));}
   if(item.type==='sms'){scene.append(bubble('MIA · SMS EXAMPLE','Alex, your appointment is saved for Tue Oct 13, 2 PM with Jordan. Your $40 deposit is pending.'),bubble('NEXT STEP','A deposit link is sent through your configured payment provider.'),element('p','Illustration only. No text or payment is sent.','scene-status'));}
-  if(item.type==='team'){scene.append(row('Client','Alex Rivera'),row('Stylist / time','Jordan · Oct 13, 2 PM'),row('Booking source','AI voice'),row('Appointment','Saved'),row('Deposit','$40 · Pending'));}
+  if(item.type==='team'){scene.append(row('Client','Alex Rivera'),row('Employee / time','Jordan · Oct 13, 2 PM'),row('Booking source','AI voice'),row('Appointment','Saved'),row('Deposit','$40 · Pending'));}
 }
 document.querySelectorAll('[data-step]').forEach(button=>button.addEventListener('click',()=>renderStep(Number(button.dataset.step))));
 document.querySelector('#next-step').addEventListener('click',()=>renderStep((currentStep+1)%steps.length));
 renderStep(0);
-fetch('/media/transcripts/timeline.json').then(r=>{if(!r.ok)throw new Error('Transcript unavailable');return r.json();}).then(data=>{for(const line of data.narrator){document.querySelector('#video-transcript').append(element('p',line.text));}}).catch(()=>document.querySelector('#video-transcript').append(element('p','Request details are collected, availability is checked, an appointment is saved, SMS supplies the next step, and the team sees the booking or callback request.')));
+fetch('/media/transcripts/booking-timeline-v3.json').then(r=>{if(!r.ok)throw new Error('Transcript unavailable');return r.json();}).then(data=>{for(const line of data.narrator){document.querySelector('#video-transcript').append(element('p',line.text));}}).catch(()=>document.querySelector('#video-transcript').append(element('p','Request details are collected, availability is checked, an appointment is saved, SMS supplies the next step, and the team sees the booking or callback request.')));
 const film=document.querySelector('video');
 film.addEventListener('error',()=>{document.querySelector('#video-error').hidden=false;});
 

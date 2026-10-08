@@ -1,0 +1,46 @@
+{
+  "narrator": [
+    {
+      "speaker": "caption",
+      "text": "A customer calls about a service and asks for a preferred employee.",
+      "start": 0,
+      "end": 5
+    },
+    {
+      "speaker": "caption",
+      "text": "The assistant checks working hours, breaks, prices and the connected calendar.",
+      "start": 5,
+      "end": 10
+    },
+    {
+      "speaker": "caption",
+      "text": "The appointment is saved. The deposit is still pending.",
+      "start": 10,
+      "end": 16
+    },
+    {
+      "speaker": "caption",
+      "text": "The customer receives details and a deposit request. This example sends no messages.",
+      "start": 16,
+      "end": 23
+    },
+    {
+      "speaker": "caption",
+      "text": "The team can see the appointment and pending deposit in one place.",
+      "start": 23,
+      "end": 30
+    },
+    {
+      "speaker": "caption",
+      "text": "Requests that need a person can be flagged for a callback.",
+      "start": 30,
+      "end": 35
+    },
+    {
+      "speaker": "caption",
+      "text": "Illustrative workflow with fictional data. Book a demo for your team.",
+      "start": 35,
+      "end": 40
+    }
+  ]
+}
