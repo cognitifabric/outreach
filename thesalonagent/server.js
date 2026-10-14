@@ -5,6 +5,7 @@ const {randomUUID}=require('crypto');
 const {Pool}=require('pg');
 const {initDb,databaseOptions}=require('./db');
 const {mountAuth}=require('./auth');
+const {consentEvidence}=require('./sms-consent');
 const {validEmail,normalizeRecipients,createTransport,notificationMessage,createNotificationWorker}=require('./notifications');
 const INSTAGRAM='https://www.instagram.com/thesalonagent/';
 const FIELDS={name:120,salon:160,email:254,phone:40,size:40,calls:40,bookingSystem:120,services:2000,painPoints:500,decision:40,businessType:80,contactPreference:40,source:300};
@@ -18,6 +19,8 @@ function validateIntake(body) {
     data[key]=value.trim();
   }
   if(!data.name || !validEmail(data.email)) return null;
+  data.smsConsent=consentEvidence(body,data.phone);
+  if(!data.smsConsent || (data.contactPreference==='Text message' && !data.smsConsent.granted))return null;
   if(body.requestKey && (typeof body.requestKey!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestKey))) return null;
   data.requestKey=body.requestKey || randomUUID();
   return data;
@@ -30,7 +33,7 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
     res.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; media-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     next();
   });
-  for(const file of ['index.html','app.js','style.css','privacy.html','admin.html','admin.js','workspace.css','workflow-3d.js','workflow-3d.js.LEGAL.txt']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
+  for(const file of ['index.html','app.js','style.css','privacy.html','sms-terms.html','admin.html','admin.js','workspace.css','workflow-3d.js','workflow-3d.js.LEGAL.txt']) app.get('/'+file,(_req,res)=>res.sendFile(path.join(__dirname,file)));
   app.use('/media',express.static(path.join(__dirname,'media'),{dotfiles:'deny',index:false,redirect:false}));
   app.get('/',(_req,res)=>res.sendFile(path.join(__dirname,'index.html')));
   app.get(['/admin','/admin/activate'],(_req,res)=>res.set('Cache-Control','no-store').sendFile(path.join(__dirname,'admin.html')));
@@ -48,14 +51,14 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
   app.post('/api/intake',rateLimit,async(req,res)=>{
     if(req.body?.companyFax) return res.status(400).json({ok:false,error:'Could not process this enquiry.'});
     const data=validateIntake(req.body);
-    if(!data) return res.status(400).json({ok:false,error:'Check your name and email, and keep responses within the field limits.'});
+    if(!data) return res.status(400).json({ok:false,error:'Check your name and email, and keep responses within the field limits. SMS consent requires a valid US mobile number and the current consent statement.'});
     if(!db) return res.status(503).json({ok:false,error:'The form is temporarily unavailable. Email contact@fabricioguardia.com or message us on Instagram.',contactUrl:INSTAGRAM});
     try {
       // Save the lead and a separate notification for every configured recipient
       // in one statement. A retry with the same request key returns the same lead.
       const result=await db.query(`WITH saved AS (
-        INSERT INTO intake_submissions(name,salon,email,phone,size,calls,booking_system,services,pain_points,decision,submitted_at,request_key,business_type,contact_preference,source,notification_recipients)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,$12,$13,$14,(SELECT emails FROM notification_settings WHERE id=TRUE))
+        INSERT INTO intake_submissions(name,salon,email,phone,size,calls,booking_system,services,pain_points,decision,submitted_at,request_key,business_type,contact_preference,source,notification_recipients,sms_consent)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,$12,$13,$14,(SELECT emails FROM notification_settings WHERE id=TRUE),$15::jsonb)
         ON CONFLICT(request_key) DO UPDATE SET request_key=EXCLUDED.request_key RETURNING id,notification_recipients,deleted_at
       ), queued AS (
         INSERT INTO lead_notifications(lead_id,recipient)
@@ -64,7 +67,7 @@ function createApp({db=null,onLeadSaved=()=>{},notificationsConfigured=false,set
         WHERE saved.deleted_at IS NULL
         ON CONFLICT(lead_id,recipient) DO NOTHING RETURNING id
       ) SELECT id FROM saved`,
-      [data.name,data.salon,data.email,data.phone||null,data.size||null,data.calls||null,data.bookingSystem||null,data.services||null,data.painPoints||null,data.decision||null,data.requestKey,data.businessType||null,data.contactPreference||'Email',data.source||null]);
+      [data.name,data.salon,data.email,data.phone||null,data.size||null,data.calls||null,data.bookingSystem||null,data.services||null,data.painPoints||null,data.decision||null,data.requestKey,data.businessType||null,data.contactPreference||'Email',data.source||null,JSON.stringify(data.smsConsent)]);
       const id=result.rows[0].id;res.status(201).json({ok:true,id,message:'Your enquiry has been saved.'});
       Promise.resolve().then(onLeadSaved).catch(()=>logger.error(`Queue wake failed for saved enquiry ${id}; pending alerts remain saved.`));
     } catch {

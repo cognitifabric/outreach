@@ -5,6 +5,7 @@ const {randomUUID}=require('crypto');
 const {createApp,initDb}=require('../server');
 const {databaseOptions}=require('../db');
 const {createNotificationWorker}=require('../notifications');
+const {SMS_CONSENT_VERSION,SMS_CONSENT_TEXT}=require('../sms-consent');
 test('PostgreSQL: accounts, durable enquiries, recipient changes, retries and concurrent edits',{skip:!process.env.TEST_DATABASE_URL},async()=>{
   const root=new Pool({connectionString:process.env.TEST_DATABASE_URL}),schema='outreach_qa_'+randomUUID().replaceAll('-','');
   await root.query(`CREATE SCHEMA ${schema}`);
@@ -93,6 +94,14 @@ test('PostgreSQL: accounts, durable enquiries, recipient changes, retries and co
     const individualLead=inbox.submissions.find(lead=>lead.id===individualId);
     assert.equal(individualLead.name,'Fictional Individual');assert.equal(individualLead.salon,'');
     assert.deepEqual(individualLead.notifications.map(n=>n.recipient).sort(),['contact@fabricioguardia.com','future@example.invalid']);
+    assert.deepEqual(individualLead.sms_consent,{granted:false});
+    const smsBody={requestKey:randomUUID(),name:'SMS Consent QA',email:'sms-qa@example.invalid',phone:'(202) 555-0116',smsConsent:true,smsConsentVersion:SMS_CONSENT_VERSION};
+    const smsResponse=await req('/api/intake','POST',smsBody);assert.equal(smsResponse.status,201);const smsId=(await smsResponse.json()).id;
+    const evidence=(await db.query('SELECT sms_consent FROM intake_submissions WHERE id=$1',[smsId])).rows[0].sms_consent;
+    assert.equal(evidence.granted,true);assert.equal(evidence.phone,'+12025550116');assert.equal(evidence.version,SMS_CONSENT_VERSION);assert.equal(evidence.text,SMS_CONSENT_TEXT);assert.ok(evidence.recordedAt);
+    assert.equal((await (await req('/api/intake','POST',smsBody)).json()).id,smsId);
+    assert.deepEqual((await db.query('SELECT sms_consent FROM intake_submissions WHERE id=$1',[smsId])).rows[0].sms_consent,evidence);
+    const smsInbox=await (await req('/api/submissions','GET',null,owner)).json();assert.deepEqual(smsInbox.submissions.find(lead=>lead.id===smsId).sms_consent,evidence);
     assert.equal((await req('/api/admin/logout','POST',{},owner)).status,200);assert.equal((await req('/api/submissions','GET',null,owner)).status,401);
   } finally {if(server)await new Promise(r=>server.close(r));await db.end();await root.query(`DROP SCHEMA ${schema} CASCADE`);await root.end()}
 });

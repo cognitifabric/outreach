@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const {createApp}=require('../server');
 const {hashPassword,verifyPassword}=require('../auth');
 const {normalizeRecipients,notificationMessage}=require('../notifications');
+const {SMS_CONSENT_VERSION,SMS_CONSENT_TEXT}=require('../sms-consent');
 const fixture={name:'Fictional QA Owner',salon:'QA Fictional Salon',email:'qa@example.invalid',services:'Test lashes'};
 const quiet={error(){},log(){}};
 async function withServer(options,run){const server=createApp({...options,logger:options.logger || quiet}).listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));try{await run(`http://127.0.0.1:${server.address().port}`)}finally{await new Promise(r=>server.close(r))}}
@@ -24,6 +25,21 @@ test('failed or missing storage preserves a truthful failure',async()=>{
       const r=await submit(url);assert.equal(r.status,503);const body=await r.json();assert.equal(body.ok,false);assert.ok(body.contactUrl.endsWith('/thesalonagent/'));assert.equal(JSON.stringify(body).includes('private database detail'),false);assert.equal(woke,false);
     });
   }
+});
+test('SMS consent is explicit, versioned and cannot be inferred from a phone preference',async()=>{
+  const records=[];
+  await withServer({db:{async query(_sql,args){records.push(JSON.parse(args[14]));return {rows:[{id:records.length}]}}}},async url=>{
+    for(const body of [{...fixture,phone:'2025550116',contactPreference:'Phone call'},{...fixture,phone:'2025550116',smsConsent:false}])assert.equal((await submit(url,body)).status,201);
+    assert.deepEqual(records,[{granted:false},{granted:false}]);
+    for(const body of [{...fixture,smsConsent:'true'},{...fixture,smsConsent:true,smsConsentVersion:SMS_CONSENT_VERSION},{...fixture,phone:'2025550116',smsConsent:true,smsConsentVersion:'old'},{...fixture,phone:'123',smsConsent:true,smsConsentVersion:SMS_CONSENT_VERSION},{...fixture,phone:'2025550116',contactPreference:'Text message'}])assert.equal((await submit(url,body)).status,400);
+    assert.equal(records.length,2);
+    assert.equal((await submit(url,{...fixture,phone:'(202) 555-0116',smsConsent:true,smsConsentVersion:SMS_CONSENT_VERSION,smsConsentRecordedAt:'2099-01-01'})).status,201);
+    const evidence=records[2];assert.equal(evidence.granted,true);assert.equal(evidence.phone,'+12025550116');assert.equal(evidence.text,SMS_CONSENT_TEXT);assert.equal(evidence.version,SMS_CONSENT_VERSION);assert.equal(evidence.method,'optional_website_checkbox');assert.ok(new Date(evidence.recordedAt)<new Date('2099-01-01'));
+    const html=await (await fetch(url+'/')).text();const label=html.match(/<label class="sms-consent">(.*?)<\/label>/s)[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();assert.equal(label,SMS_CONSENT_TEXT);
+    const checkbox=html.match(/<input[^>]+name="smsConsent"[^>]*>/)[0];assert.doesNotMatch(checkbox,/\s(?:checked|required)(?:\s|=|>)/);
+    for(const file of ['privacy.html','sms-terms.html']){const response=await fetch(url+'/'+file);assert.equal(response.status,200);assert.match(await response.text(),/STOP/)}
+    assert.equal((await fetch(url+'/sms-consent.js')).status,404);
+  });
 });
 test('invalid identity, types, field bounds and idempotency keys never reach storage',async()=>{
   let inserts=0;await withServer({db:{async query(){inserts++;return {rows:[{id:1}]}}}},async url=>{

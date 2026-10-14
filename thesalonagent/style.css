@@ -13,3 +13,7 @@
 
 @media(max-width:760px){.nav{height:68px}.hero{padding-top:24px;gap:18px}.hero h1{font-size:34px}.hero .eyebrow{margin-bottom:11px}.hero .intro{margin:14px 0}.demo-top{padding:8px 13px}.step-tabs{padding:9px 11px 5px}.step-tabs button{min-height:44px;font-size:8px}.step-tabs button span{width:23px;height:23px;margin-bottom:4px}.demo-content{padding:10px 15px;min-height:176px}.demo-content h2{font-size:20px;margin-bottom:9px}.bubble{font-size:11px;padding:8px 10px}.demo-bottom{padding:7px 13px}.disclosure{padding:7px 13px;font-size:8px}}
 @media(max-width:370px){.hero h1{font-size:31px}}
+
+.sms-permission{grid-column:1/-1;margin:0;padding:17px;border:1px solid var(--line);border-radius:9px;background:#f8faff}.sms-consent,.form-grid .sms-consent{display:flex;flex-direction:row;align-items:flex-start;gap:10px;cursor:pointer}.sms-consent input{width:18px;height:18px;min-height:18px;flex-shrink:0;padding:0;margin:3px 0;accent-color:var(--blue)}.sms-consent span,.sms-info{font-size:12px;line-height:1.65;color:var(--muted)}.sms-info{margin:10px 0 0}.sms-info:first-child{margin:0 0 10px}.sms-info a{text-underline-offset:3px}
+
+.sms-consent span{font-weight:400}

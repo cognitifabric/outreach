@@ -27,6 +27,7 @@ async function initDb(db) {
     ADD COLUMN IF NOT EXISTS business_type TEXT,
     ADD COLUMN IF NOT EXISTS contact_preference TEXT,
     ADD COLUMN IF NOT EXISTS source TEXT,
+    ADD COLUMN IF NOT EXISTS sms_consent JSONB NOT NULL DEFAULT '{"granted":false}'::jsonb,
     ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'New',
     ADD COLUMN IF NOT EXISTS assigned_to TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '',

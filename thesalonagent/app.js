@@ -37,6 +37,8 @@ form.addEventListener('submit',async e=>{
   e.preventDefault();if(!form.reportValidity())return;
   if(form.elements.contactPreference.value==='Phone call' && !form.elements.phone.value.trim()) {$('#form-error').textContent='Add your phone number or choose an email reply.';$('#form-error').hidden=false;form.elements.phone.focus();return}
   const data=Object.fromEntries(new FormData(form));
+  data.smsConsent=Boolean(form.elements.smsConsent?.checked);
+  if(data.smsConsent){const digits=data.phone.replace(/\D/g,'');if(!/^(?:1)?[2-9]\d{2}[2-9]\d{6}$/.test(digits)){$('#form-error').textContent='Add a valid US mobile number for text updates, or leave SMS consent unchecked.';$('#form-error').hidden=false;form.elements.phone.focus();return}}
   const params=new URLSearchParams(location.search),tags=['utm_source','utm_medium','utm_campaign'].map(k=>params.get(k)?`${k}=${params.get(k)}`:'').filter(Boolean).join(' ');
   data.source=tags.slice(0,300) || 'Website';
   const signature=JSON.stringify(data);if(signature!==payloadSignature){payloadSignature=signature;requestKey=crypto.randomUUID()}data.requestKey=requestKey;
