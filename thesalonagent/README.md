@@ -24,6 +24,10 @@ Target the **outreach** service in **webhooks apis and subdomains**. Preserve un
 
 The initial notification recipient is **contact@fabricioguardia.com**. The owner can add/remove up to ten recipients in **Email notifications**. Changes apply to future enquiries; previously saved enquiries retain their original recipient snapshot. Each recipient receives a separate message. Reply-to is the prospect's submitted email. Recipients do not automatically gain dashboard access.
 
+## Demo and support SMS program
+
+The owner selected Rapid Clean Solutions LLC as the operator of The Salon Agent on October 15, 2026. The public form, privacy policy and SMS terms identify that relationship without asserting a registered DBA. SMS consent is optional and versioned; historical records keep their original statement and must not be rewritten. The service's own demo/support campaign is separate from messages sent for client salons. Saving consent does not send a text. Carrier approval, sender routing and verified opt-out handling are required before activation.
+
 ## Supabase database
 
 Create a separate outreach project in Supabase and personally choose its database password. In the project's **Connect** dialog, copy the **Session pooler** PostgreSQL connection string on port **5432**. This supports Railway's IPv4 connection and retains the session state used by the app. Do not use the transaction pooler on port 6543. Use the exact host and username supplied by Supabase; percent-encode reserved characters in the password when putting it in a URI.

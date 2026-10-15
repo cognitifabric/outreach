@@ -1,7 +1,7 @@
 // Versioned consent evidence for The Salon Agent's own demo/support messages.
 // Recording permission here does not send a message or bypass carrier approval.
-const SMS_CONSENT_VERSION='tsa-demo-support-2026-10-14';
-const SMS_CONSENT_TEXT='I agree to receive non-marketing text messages from The Salon Agent at the number provided about my demo request, demo appointment updates and service questions. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase.';
+const SMS_CONSENT_VERSION='tsa-demo-support-2026-10-15';
+const SMS_CONSENT_TEXT='I agree to receive non-marketing text messages from The Salon Agent, a service operated by Rapid Clean Solutions LLC, at the number provided about my demo request, demo appointment updates and service questions. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase.';
 function consentEvidence(body,phone){
   if(body.smsConsent!==undefined && typeof body.smsConsent!=='boolean')return null;
   if(body.smsConsent!==true)return {granted:false};
